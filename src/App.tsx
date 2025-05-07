@@ -15,6 +15,7 @@ import EventList from './features/events/EventList';
 import EventForm from './features/events/EventForm';
 import ParticipantList from './features/participants/ParticipantList';
 import QRCodeGenerator from './features/participants/QRCodeGenerator';
+import QRCodeDownloader from './features/participants/QRCodeDownloader';
 import CheckInScanner from './features/check-in/CheckInScanner';
 import EmailTemplateForm from './features/email/EmailTemplateForm';
 import Signup from './pages/signup';
@@ -76,10 +77,16 @@ function App() {
             } />
             
             {/* Participants */}
+            <Route path="participants" element={
+              <ProtectedRoute staffAllowed={true}>
+                <ParticipantList />
+              </ProtectedRoute>
+            } />
             <Route path="events/:eventId/participants" element={<ParticipantList />} />
             
             {/* QR Codes */}
             <Route path="events/:eventId/qr-codes" element={<QRCodeGenerator />} />
+            <Route path="events/:eventId/qr-codes/download" element={<QRCodeDownloader />} />
             
             {/* Check-in */}
             <Route path="events/:eventId/check-in" element={

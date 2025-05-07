@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom'; // Keep Link for other actio
 import { Mail, Download, Plus, QrCode, Ban, RefreshCw, Edit } from 'lucide-react';
 import Modal from '@/components/ui/modal'; // Changed casing
 import ParticipantForm from './ParticipantForm';
-import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -19,27 +19,23 @@ const ParticipantList: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
 
-  const fetchParticipants = async () => {
-    if (!eventId) return;
+  const { fetchEventDetails, fetchParticipants, revokeParticipantAccess, restoreParticipantAccess } = useAuth();
+  console.log('eventId: ', eventId, event);
+  const fetchData = async () => {
     setLoading(true);
     try {
       // Fetch event details
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', eventId)
-        .single();
-      if (eventError) throw eventError;
-      setEvent(eventData as Event);
+      const { data: eventData, error: eventError } = await fetchEventDetails(eventId);
+      if (eventError) throw new Error(eventError);
+      setEvent(eventData); 
 
       // Fetch participants for the event
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('participants')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('name');
-      if (participantsError) throw participantsError;
-      setParticipants(participantsData as Participant[]);
+      console.log('here 0');
+      
+      const { data: participantsData, error: participantsError } = await fetchParticipants(eventId);
+      console.log('here 1');
+      if (participantsError) throw new Error(participantsError);
+      setParticipants(participantsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -47,9 +43,12 @@ const ParticipantList: React.FC = () => {
     }
   };
 
+  console.log('cdvvffvvf: ', event);
+
   useEffect(() => {
-    fetchParticipants();
-  }, [eventId]);
+    console.log('4444');
+    fetchData();
+  }, []); // Add dependencies
 
   const handleOpenAddModal = () => {
     setEditingParticipant(null);
@@ -81,16 +80,15 @@ const ParticipantList: React.FC = () => {
 
   const handleRevokeAccess = async (participantId: string) => {
     try {
-      // Update the participant's is_revoked status
-      await supabase
-        .from('participants')
-        .update({ is_revoked: true })
-        .eq('id', participantId);
+      const { success, error } = await revokeParticipantAccess(participantId);
+      if (error) throw new Error(error);
       
-      // Update the local state
-      setParticipants(participants.map(p => 
-        p.id === participantId ? { ...p, is_revoked: true } : p
-      ));
+      if (success) {
+        // Update the local state
+        setParticipants(participants.map(p => 
+          p.id === participantId ? { ...p, is_revoked: true } : p
+        ));
+      }
     } catch (error) {
       console.error('Error revoking access:', error);
     }
@@ -98,16 +96,15 @@ const ParticipantList: React.FC = () => {
 
   const handleRestoreAccess = async (participantId: string) => {
     try {
-      // Update the participant's is_revoked status
-      await supabase
-        .from('participants')
-        .update({ is_revoked: false })
-        .eq('id', participantId);
-      
-      // Update the local state
-      setParticipants(participants.map(p => 
-        p.id === participantId ? { ...p, is_revoked: false } : p
-      ));
+      const { success, error } = await restoreParticipantAccess(participantId);
+      if (error) throw new Error(error);
+
+      if (success) {
+        // Update the local state
+        setParticipants(participants.map(p => 
+          p.id === participantId ? { ...p, is_revoked: false } : p
+        ));
+      }
     } catch (error) {
       console.error('Error restoring access:', error);
     }
@@ -157,46 +154,49 @@ const ParticipantList: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Participants</h1>
-          {event && (
+          {event && eventId && (
             <p className="text-muted-foreground">
               For event: {event.name} ({formatDate(event.date)})
             </p>
           )}
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleOpenAddModal}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add Participant
-          </Button>
-          
-          <Button asChild variant="outline" size="sm">
-            {/* TODO: Implement Bulk Import Modal */}
-            <Link to={`/events/${eventId}/participants/import`}>
+        {
+          eventId &&
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleOpenAddModal}>
               <Plus className="mr-1 h-4 w-4" />
-              Bulk Import
-            </Link>
-          </Button>
-          
-          <Button variant="outline" size="sm" onClick={exportParticipantsCSV}>
-            <Download className="mr-1 h-4 w-4" />
-            Export CSV
-          </Button>
-          
-          <Button asChild variant="outline" size="sm">
-            <Link to={`/events/${eventId}/emails`}>
-              <Mail className="mr-1 h-4 w-4" />
-              Send Emails
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" size="sm">
-            <Link to={`/events/${eventId}/qr-codes`}>
-              <QrCode className="mr-1 h-4 w-4" />
-              Generate QR Codes
-            </Link>
-          </Button>
-        </div>
+              Add Participant
+            </Button>
+            
+            <Button asChild variant="outline" size="sm">
+              {/* TODO: Implement Bulk Import Modal */}
+              <Link to={`/events/${eventId}/participants/import`}>
+                <Plus className="mr-1 h-4 w-4" />
+                Bulk Import
+              </Link>
+            </Button>
+            
+            <Button variant="outline" size="sm" onClick={exportParticipantsCSV}>
+              <Download className="mr-1 h-4 w-4" />
+              Export CSV
+            </Button>
+            
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/events/${eventId}/emails`}>
+                <Mail className="mr-1 h-4 w-4" />
+                Send Emails
+              </Link>
+            </Button>
+            
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/events/${eventId}/qr-codes`}>
+                <QrCode className="mr-1 h-4 w-4" />
+                Generate QR Codes
+              </Link>
+            </Button>
+          </div>
+        }
       </div>
       
       <div>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
-import { User } from '@/types'; // Assuming User type is defined here or imported
+import { User, Participant, Event } from '@/types'; // Assuming User type is defined here or imported
 
 interface AuthContextType {
   user: User | null;
@@ -8,9 +8,15 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; }>;
   signUp: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; }>;
   signOut: () => Promise<void>;
+  fetchEventDetails: (eventId?: string) => Promise<{ data: Event | null; error: string | null }>;
+  fetchParticipants: (eventId?: string) => Promise<{ data: Participant[] | null; error: string | null }>;
+  revokeParticipantAccess: (participantId: string) => Promise<{ success: boolean; error: string | null }>;
+  restoreParticipantAccess: (participantId: string) => Promise<{ success: boolean; error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Define the hook before the provider component
 
 // Define the hook before the provider component
 export const useAuth = () => {
@@ -86,6 +92,221 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       xhr.send();
     });
   };
+
+  // New function to fetch event details using XHR
+  const fetchEventDetails = (eventId?: string): Promise<{ data: Event | null; error: string | null }> => {
+    return new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        resolve({ data: null, error: 'Missing Supabase configuration' });
+        return;
+      }
+
+      let url;
+      if (eventId){
+        url = `${supabaseUrl}/rest/v1/events?id=eq.${eventId}&select=*`;  
+      } else {
+        url = `${supabaseUrl}/rest/v1/events?select=*`;  
+      }
+      
+      xhr.open('GET', url);
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Prefer', 'return=representation');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function() {
+        console.log('fetchEventDetails XHR completed with status:', xhr.status);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            console.log('fetchEventDetails response:', response);
+
+            if (Array.isArray(response) && response.length > 0) {
+              resolve({ data: response[0] as Event, error: null });
+            } else {
+              console.error('Event not found or invalid response');
+              resolve({ data: null, error: 'Event not found' });
+            }
+          } catch (e: unknown) {
+            console.error('Error parsing fetchEventDetails response:', e);
+            resolve({ data: null, error: 'Failed to parse server response' });
+          }
+        } else {
+          console.error('fetchEventDetails request failed:', xhr.responseText);
+          resolve({ data: null, error: `Failed to fetch event details: ${xhr.status} ${xhr.statusText}` });
+        }
+      };
+
+      xhr.onerror = function() {
+        console.error('fetchEventDetails XHR error');
+        resolve({ data: null, error: 'Network error during event fetch' });
+      };
+
+      xhr.ontimeout = function() {
+        console.error('fetchEventDetails XHR timed out');
+        resolve({ data: null, error: 'Request timed out' });
+      };
+
+      xhr.send();
+    });
+  };
+
+  // New function to fetch participants using XHR
+  const fetchParticipants = (eventId?: string): Promise<{ data: Participant[] | null; error: string | null }> => {
+    return new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        resolve({ data: null, error: 'Missing Supabase configuration' });
+        return;
+      }
+
+      let url;
+      if (eventId){
+        url = `${supabaseUrl}/rest/v1/participants?event_id=eq.${eventId}&select=*&order=name.asc`;
+      } else {
+        url = `${supabaseUrl}/rest/v1/participants?select=*&order=name.asc`;
+      }
+      
+      xhr.open('GET', url);
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Prefer', 'return=representation');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function() {
+        console.log('fetchParticipants XHR completed with status:', xhr.status);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            console.log('fetchParticipants response:', response);
+
+            if (Array.isArray(response)) {
+              resolve({ data: response as Participant[], error: null });
+            } else {
+              console.error('Invalid participants response');
+              resolve({ data: null, error: 'Invalid response from server' });
+            }
+          } catch (e: unknown) {
+            console.error('Error parsing fetchParticipants response:', e);
+            resolve({ data: null, error: 'Failed to parse server response' });
+          }
+        } else {
+          console.error('fetchParticipants request failed:', xhr.responseText);
+          resolve({ data: null, error: `Failed to fetch participants: ${xhr.status} ${xhr.statusText}` });
+        }
+      };
+
+      xhr.onerror = function() {
+        console.error('fetchParticipants XHR error');
+        resolve({ data: null, error: 'Network error during participants fetch' });
+      };
+
+      xhr.ontimeout = function() {
+        console.error('fetchParticipants XHR timed out');
+        resolve({ data: null, error: 'Request timed out' });
+      };
+
+      xhr.send();
+    });
+  };
+
+  // New function to revoke participant access using XHR
+  const revokeParticipantAccess = (participantId: string): Promise<{ success: boolean; error: string | null }> => {
+    return new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        resolve({ success: false, error: 'Missing Supabase configuration' });
+        return;
+      }
+
+      const url = `${supabaseUrl}/rest/v1/participants?id=eq.${participantId}`;
+
+      xhr.open('PATCH', url);
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Prefer', 'return=minimal'); // We don't need the updated record back
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function() {
+        console.log('revokeParticipantAccess XHR completed with status:', xhr.status);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('Participant access revoked successfully');
+          resolve({ success: true, error: null });
+        } else {
+          console.error('revokeParticipantAccess request failed:', xhr.responseText);
+          resolve({ success: false, error: `Failed to revoke access: ${xhr.status} ${xhr.statusText}` });
+        }
+      };
+
+      xhr.onerror = function() {
+        console.error('revokeParticipantAccess XHR error');
+        resolve({ success: false, error: 'Network error during access revocation' });
+      };
+
+      xhr.ontimeout = function() {
+        console.error('revokeParticipantAccess XHR timed out');
+        resolve({ success: false, error: 'Request timed out' });
+      };
+
+      xhr.send(JSON.stringify({ is_revoked: true }));
+    });
+  };
+
+  // New function to restore participant access using XHR
+  const restoreParticipantAccess = (participantId: string): Promise<{ success: boolean; error: string | null }> => {
+    return new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('Missing Supabase environment variables');
+        resolve({ success: false, error: 'Missing Supabase configuration' });
+        return;
+      }
+
+      const url = `${supabaseUrl}/rest/v1/participants?id=eq.${participantId}`;
+
+      xhr.open('PATCH', url);
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Prefer', 'return=minimal'); // We don't need the updated record back
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function() {
+        console.log('restoreParticipantAccess XHR completed with status:', xhr.status);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('Participant access restored successfully');
+          resolve({ success: true, error: null });
+        } else {
+          console.error('restoreParticipantAccess request failed:', xhr.responseText);
+          resolve({ success: false, error: `Failed to restore access: ${xhr.status} ${xhr.statusText}` });
+        }
+      };
+
+      xhr.onerror = function() {
+        console.error('restoreParticipantAccess XHR error');
+        resolve({ success: false, error: 'Network error during access restoration' });
+      };
+
+      xhr.ontimeout = function() {
+        console.error('restoreParticipantAccess XHR timed out');
+        resolve({ success: false, error: 'Request timed out' });
+      };
+
+      xhr.send(JSON.stringify({ is_revoked: false }));
+    });
+  };
+
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -407,6 +628,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signIn,
     signUp,
     signOut,
+    fetchEventDetails,
+    fetchParticipants,
+    revokeParticipantAccess,
+    restoreParticipantAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

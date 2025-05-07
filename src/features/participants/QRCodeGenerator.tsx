@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronLeft, Download, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { generateQRToken, getQRCheckInUrl } from '@/lib/utils';
+import { generateQRToken } from '@/lib/utils';
 import { Event, Participant } from '@/types';
 
 const QRCodeGenerator: React.FC = () => {
@@ -57,7 +57,7 @@ const QRCodeGenerator: React.FC = () => {
     try {
       // Generate QR tokens for participants who don't have one
       const updates = participants.map(participant => ({
-        id: participant.id,
+        ...participant,
         qr_token: generateQRToken(),
       }));
       
@@ -66,6 +66,8 @@ const QRCodeGenerator: React.FC = () => {
       for (let i = 0; i < updates.length; i += batchSize) {
         const batch = updates.slice(i, i + batchSize);
         const { error } = await supabase.from('participants').upsert(batch);
+        console.log('aqui_ ', error);
+        
         if (error) throw error;
       }
       
