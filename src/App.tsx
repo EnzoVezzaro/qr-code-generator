@@ -6,6 +6,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/layout';
 
 // Pages
+import FrontendQrCheckerPage from './pages/FrontendQrCheckerPage';
+import CheckInManagerPage from './pages/CheckInManagerPage';
+
+// Pages
 import Dashboard from './pages/dashboard';
 import Login from './pages/login';
 import NotFound from './pages/not-found';
@@ -54,6 +58,7 @@ function App() {
           {/* Public routes */}
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/events/:eventId/frontend-qr-checker" element={<FrontendQrCheckerPage />} />
           
           {/* Protected routes */}
           <Route path="/" element={
@@ -93,9 +98,7 @@ function App() {
             {/* Check-in */}
             <Route path="check-in-manager" element={
               <ProtectedRoute staffAllowed={true}>
-                <div className="p-4">
-                  <CheckInScanner />
-                </div>
+                <CheckInManagerPage />
               </ProtectedRoute>
             } />
             <Route path="events/:eventId/check-in" element={

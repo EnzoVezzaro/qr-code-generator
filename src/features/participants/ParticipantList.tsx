@@ -167,6 +167,11 @@ const ParticipantList: React.FC = () => {
         {
           eventId &&
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/events/${eventId}/frontend-qr-checker`} target="_blank">
+                Frontend
+              </Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={handleOpenAddModal}>
               <Plus className="mr-1 h-4 w-4" />
               Add Participant
