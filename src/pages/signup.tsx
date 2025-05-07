@@ -10,41 +10,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
 
-const loginSchema = z.object({
+const signupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string()
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
-const Login: React.FC = () => {
+const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: SignupFormData) => {
     setError(null);
     
     try {
-      console.log('here 1: ', data)
-      const result = await signIn(data.email, data.password);
-      console.log('here 2: ', data)
+      const result = await signUp(data.name, data.email, data.password);
+      console.log('result_: ', result);
+      
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setError(result.error || 'Login failed. Please check your credentials and try again.');
+        setError(result.error || 'Signup failed. Please try again.');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
-      console.error('Login error:', err);
+      console.error('Signup error:', err);
     }
   };
 
@@ -56,14 +61,14 @@ const Login: React.FC = () => {
             <QrCode className="h-12 w-12 text-accent" />
           </div>
           <h1 className="text-3xl font-bold">QR Access Manager</h1>
-          <p className="text-muted-foreground">Log in to manage your events</p>
+          <p className="text-muted-foreground">Create your account</p>
         </div>
         
         <Card>
           <CardHeader>
-            <CardTitle>Login</CardTitle>
+            <CardTitle>Sign Up</CardTitle>
             <CardDescription>
-              Enter your credentials to access your account
+              Create an account to manage your events
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -73,6 +78,19 @@ const Login: React.FC = () => {
                   {error}
                 </div>
               )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  {...register('name')}
+                />
+                {errors.name && (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                )}
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -88,26 +106,7 @@ const Login: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto text-xs"
-                      type="button"
-                    >
-                      Forgot password?
-                    </Button>
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto text-xs"
-                      type="button"
-                      onClick={() => navigate('/signup')}
-                    >
-                      Sign up
-                    </Button>
-                  </div>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -118,10 +117,23 @@ const Login: React.FC = () => {
                   <p className="text-sm text-destructive">{errors.password.message}</p>
                 )}
               </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  {...register('confirmPassword')}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                )}
+              </div>
             </CardContent>
             <CardFooter>
               <Button className="w-full" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Logging in...' : 'Log in'}
+                {isSubmitting ? 'Creating account...' : 'Sign Up'}
               </Button>
             </CardFooter>
           </form>
@@ -129,9 +141,14 @@ const Login: React.FC = () => {
         
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>
-            Demo credentials: <br />
-            Admin: admin@example.com / password <br />
-            Staff: staff@example.com / password
+            Already have an account?{' '}
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-xs" 
+              onClick={() => navigate('/login')}
+            >
+              Log in
+            </Button>
           </p>
         </div>
       </div>
@@ -139,4 +156,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Signup;

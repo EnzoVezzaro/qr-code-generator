@@ -17,6 +17,7 @@ const Dashboard: React.FC = () => {
       try {
         // Fetch upcoming events (events with dates >= today)
         const today = new Date().toISOString();
+        console.log('get events ....');
         const { data: events, error: eventsError } = await supabase
           .from('events')
           .select('*')
@@ -24,6 +25,8 @@ const Dashboard: React.FC = () => {
           .order('date')
           .limit(5);
         
+        console.log('events: ', events);
+          
         if (eventsError) throw eventsError;
         setUpcomingEvents(events as Event[]);
         
@@ -77,6 +80,8 @@ const Dashboard: React.FC = () => {
 
     fetchDashboardData();
   }, []);
+
+  console.log('get events ....');
 
   if (loading) {
     return (

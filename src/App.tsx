@@ -17,6 +17,7 @@ import ParticipantList from './features/participants/ParticipantList';
 import QRCodeGenerator from './features/participants/QRCodeGenerator';
 import CheckInScanner from './features/check-in/CheckInScanner';
 import EmailTemplateForm from './features/email/EmailTemplateForm';
+import Signup from './pages/signup';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boolean }> = ({ 
@@ -24,6 +25,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boole
   staffAllowed = false 
 }) => {
   const { user, loading } = useAuth();
+  console.log('user: ', user, loading);
   
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -47,6 +49,7 @@ function App() {
       <Router>
         <Routes>
           {/* Public routes */}
+          <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           
           {/* Protected routes */}
