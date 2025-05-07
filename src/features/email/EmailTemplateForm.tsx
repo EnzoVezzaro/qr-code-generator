@@ -9,29 +9,57 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { EmailTemplate, EventSelectOption } from '@/types'; // Import EventSelectOption type
+import { EventSelectOption } from '@/types'; // Import EventSelectOption type
 
 const templateSchema = z.object({
   name: z.string().min(3, 'Template name must be at least 3 characters'),
   subject: z.string().min(3, 'Subject must be at least 3 characters'),
   content: z.string().min(10, 'Email content must be at least 10 characters'),
-  eventId: z.string().optional(), // Add optional eventId
+  eventId: z.string().min(1, 'Event is required'), // Make eventId mandatory
 });
 
 type TemplateFormData = z.infer<typeof templateSchema>;
 
 interface EmailTemplateFormProps {
-  template?: EmailTemplate;
   isEditing?: boolean;
 }
 
-const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ template, isEditing = false }) => {
+const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false }) => {
+  const { templateId } = useParams<{ templateId: string }>(); // Get templateId from URL
   const navigate = useNavigate();
   const { eventId: routeEventId } = useParams<{ eventId: string }>(); // Rename route eventId
   const { user } = useAuth();
 
   const [events, setEvents] = useState<EventSelectOption[]>([]); // Changed type to EventSelectOption[]
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [templateLoading, setTemplateLoading] = useState(isEditing); // Set loading state for template fetching
+  const [templateError, setTemplateError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset, // Get reset function from useForm
+  } = useForm<TemplateFormData>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: {
+      name: '',
+      subject: '',
+      content: `Dear {name},
+
+We're excited to have you join us for {event}!
+
+Your personal QR code is attached to this email. Please bring it with you to the event for quick check-in.
+
+You can also access your QR code at any time by visiting: {qr_link}
+
+See you there!
+
+Best regards,
+The Event Team`,
+      eventId: routeEventId || '', // Set default eventId from route if exists
+    },
+  });
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -55,37 +83,43 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ template, isEditi
     fetchEvents();
   }, []); // Fetch events on component mount
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<TemplateFormData>({
-    resolver: zodResolver(templateSchema),
-    defaultValues: template
-      ? {
-          name: template.name,
-          subject: template.subject,
-          content: template.body, // Use template.body
-          eventId: template.event_id || '', // Set default eventId if exists
+  useEffect(() => {
+    const fetchTemplate = async () => {
+      if (isEditing && templateId) {
+        setTemplateLoading(true);
+        setTemplateError(null);
+        try {
+          const { data, error } = await supabase
+            .from('email_templates')
+            .select('*')
+            .eq('id', templateId)
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            reset({ // Use reset to populate form with fetched data
+              name: data.name,
+              subject: data.subject,
+              content: data.body,
+              eventId: data.event_id || '',
+            });
+          }
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            setTemplateError(error.message);
+          } else {
+            setTemplateError('An unknown error occurred while fetching template');
+          }
+          console.error('Error fetching template:', error);
+        } finally {
+          setTemplateLoading(false);
         }
-      : {
-          name: '',
-          subject: '',
-          content: `Dear {name},
+      }
+    };
 
-We're excited to have you join us for {event}!
-
-Your personal QR code is attached to this email. Please bring it with you to the event for quick check-in.
-
-You can also access your QR code at any time by visiting: {qr_link}
-
-See you there!
-
-Best regards,
-The Event Team`,
-          eventId: routeEventId || '', // Set default eventId from route if exists
-        },
-  });
+    fetchTemplate();
+  }, [isEditing, templateId, reset]); // Refetch when isEditing or templateId changes
 
   const onSubmit = async (data: TemplateFormData) => {
     try {
@@ -93,12 +127,7 @@ The Event Team`,
         throw new Error('You must be logged in to create or edit email templates');
       }
 
-      // Allow saving without eventId for global templates
-      // if (!eventId) {
-      //   throw new Error('Event ID is required');
-      // }
-
-      if (isEditing && template) {
+      if (isEditing && templateId) { // Use templateId for update
         // Update existing template
         const { error } = await supabase
           .from('email_templates')
@@ -106,9 +135,9 @@ The Event Team`,
             name: data.name,
             subject: data.subject,
             body: data.content,
-            updated_at: new Date().toISOString(),
+            event_id: data.eventId, // eventId is now mandatory
           })
-          .eq('id', template.id);
+          .eq('id', templateId); // Use templateId for update
 
         if (error) throw error;
       } else {
@@ -116,25 +145,36 @@ The Event Team`,
         const { error } = await supabase
           .from('email_templates')
           .insert({
-            event_id: data.eventId || null, // Use selected eventId, or null for global
+            event_id: data.eventId, // eventId is now mandatory
             name: data.name,
             subject: data.subject,
             body: data.content,
             created_by: user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           });
 
         if (error) throw error;
       }
 
-      // Navigate to event emails page if eventId exists, otherwise navigate to dashboard
+      // Navigate to event emails page if eventId exists, otherwise navigate to email templates list
       navigate(data.eventId ? `/events/${data.eventId}/emails` : '/email-templates'); // Navigate to list after saving
     } catch (error) {
       console.error('Error saving template:', error);
       // TODO: Add proper error handling/notification
     }
   };
+
+  if (templateLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-pulse text-muted-foreground">Loading template...</div>
+      </div>
+    );
+  }
+
+  if (templateError) {
+    return <div className="p-4 text-red-500">Error loading template: {templateError}</div>;
+  }
+
 
   return (
     <Card className="w-full max-w-3xl mx-auto">
@@ -173,26 +213,24 @@ The Event Team`,
           </div>
 
           {/* Event Select Dropdown */}
-          {!isEditing && ( // Only show dropdown when creating
-            <div className="space-y-2">
-              <Label htmlFor="eventId">Associate with Event (Optional)</Label>
-              <select
-                id="eventId"
-                {...register('eventId')}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={eventsLoading}
-              >
-                <option value="">-- Select an Event --</option>
-                {events.map(event => (
-                  <option key={event.id} value={event.id}>{event.name}</option>
-                ))}
-              </select>
-              {eventsLoading && <p className="text-sm text-muted-foreground">Loading events...</p>}
-              {errors.eventId && (
-                <p className="text-sm text-destructive">{errors.eventId.message}</p>
-              )}
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="eventId">Associate with Event</Label>
+            <select
+              id="eventId"
+              {...register('eventId')}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={eventsLoading || isEditing} // Disable dropdown when editing
+            >
+              <option value="">-- Select an Event --</option>
+              {events.map(event => (
+                <option key={event.id} value={event.id}>{event.name}</option>
+              ))}
+            </select>
+            {eventsLoading && <p className="text-sm text-muted-foreground">Loading events...</p>}
+            {errors.eventId && (
+              <p className="text-sm text-destructive">{errors.eventId.message}</p>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="content">Email Content</Label>

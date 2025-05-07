@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom'; // Keep Link for other actions for now
 import { Mail, Download, Plus, QrCode, Ban, RefreshCw, Edit } from 'lucide-react';
-import Modal from '@/components/ui/modal'; // Changed casing
+import Modal from '@/components/ui/Modal'; // Fixed casing
 import ParticipantForm from './ParticipantForm';
+import SendEmailModal from '../email/SendEmailModal'; // Import SendEmailModal
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ const ParticipantList: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
+  const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false); // State for Send Email modal
 
   const { fetchEventDetails, fetchParticipants, revokeParticipantAccess, restoreParticipantAccess } = useAuth();
   const fetchData = async () => {
@@ -56,6 +58,14 @@ const ParticipantList: React.FC = () => {
   const handleCloseModal = () => {
     setIsAddModalOpen(false);
     setEditingParticipant(null);
+  };
+
+  const handleOpenSendEmailModal = () => {
+    setIsSendEmailModalOpen(true);
+  };
+
+  const handleCloseSendEmailModal = () => {
+    setIsSendEmailModalOpen(false);
   };
 
   const handleSaveParticipant = (savedParticipant: Participant) => {
@@ -175,11 +185,9 @@ const ParticipantList: React.FC = () => {
               Export CSV
             </Button>
             
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/events/${eventId}/emails`}>
-                <Mail className="mr-1 h-4 w-4" />
-                Send Emails
-              </Link>
+            <Button variant="outline" size="sm" onClick={handleOpenSendEmailModal}> {/* Updated onClick */}
+              <Mail className="mr-1 h-4 w-4" />
+              Send Emails
             </Button>
             
             <Button asChild variant="outline" size="sm">
@@ -316,6 +324,15 @@ const ParticipantList: React.FC = () => {
             onCancel={handleCloseModal}
           />
         </Modal>
+      )}
+
+      {/* Send Email Modal */}
+      {eventId && (
+        <SendEmailModal
+          isOpen={isSendEmailModalOpen}
+          onClose={handleCloseSendEmailModal}
+          eventId={eventId}
+        />
       )}
     </div>
   );

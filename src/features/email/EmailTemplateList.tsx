@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom'; // Import useParams
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { EmailTemplate } from '@/types';
 
 const EmailTemplateList: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,11 +15,21 @@ const EmailTemplateList: React.FC = () => {
     const fetchTemplates = async () => {
       setLoading(true);
       try {
-        // Fetch all email templates, including global and event-specific
-        const { data, error } = await supabase
+        let query = supabase
           .from('email_templates')
           .select('*')
           .order('created_at', { ascending: false });
+
+        // Filter by event_id if eventId is present in the URL
+        if (eventId) {
+          query = query.eq('event_id', eventId);
+        } else {
+          // Optionally, filter for global templates if no eventId is present
+          // query = query.is('event_id', null);
+          // For now, we'll show all templates if no eventId is in the URL
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         setTemplates(data || []);
@@ -31,7 +42,7 @@ const EmailTemplateList: React.FC = () => {
     };
 
     fetchTemplates();
-  }, []);
+  }, [eventId]); // Refetch templates when eventId changes
 
   const handleDeleteTemplate = async (templateId: string) => {
     if (window.confirm('Are you sure you want to delete this template?')) {
@@ -52,23 +63,31 @@ const EmailTemplateList: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <div className="text-center p-8">Loading email templates...</div>;
-  }
+  // Determine the correct link for creating a new template
+  const createTemplateLink = eventId
+    ? `/events/${eventId}/emails/templates/new`
+    // Determine the correct link for creating a new template
+    : '/email-templates/new';
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Email Templates</h1>
+    <div className="space-y-6 p-4"> {/* Added space-y-6 and p-4 */}
+      <div className="flex items-center justify-between flex-wrap gap-4 mb-6"> {/* Improved header styling */}
+        <h1 className="text-3xl font-bold"> {/* Increased font size */}
+          {eventId ? 'Event Email Templates' : 'All Email Templates'}
+        </h1>
         <Button asChild size="sm">
-          <Link to="/email-templates/new">
+          <Link to={createTemplateLink}>
             <Plus className="mr-1 h-4 w-4" />
             Create New Template
           </Link>
         </Button>
       </div>
 
-      {templates.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center h-64"> {/* Centered loading text */}
+          <div className="animate-pulse text-muted-foreground">Loading email templates...</div>
+        </div>
+      ) : templates.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>No email templates found</CardTitle>
@@ -78,7 +97,7 @@ const EmailTemplateList: React.FC = () => {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link to="/email-templates/new">
+              <Link to={createTemplateLink}>
                 <Plus className="mr-1 h-4 w-4" />
                 Create New Template
               </Link>
@@ -86,11 +105,11 @@ const EmailTemplateList: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"> {/* Adjusted grid gap */}
           {templates.map((template) => (
-            <Card key={template.id}>
+            <Card key={template.id} className="hover:shadow-md transition-shadow duration-300"> {/* Added hover effect */}
               <CardHeader>
-                <CardTitle>{template.name}</CardTitle>
+                <CardTitle className="text-xl">{template.name}</CardTitle> {/* Increased font size */}
                 <CardDescription>{template.subject}</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-end gap-2">

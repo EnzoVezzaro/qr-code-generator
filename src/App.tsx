@@ -107,6 +107,11 @@ function App() {
             } />
             
             {/* Email Templates */}
+            <Route path="events/:eventId/emails" element={
+              <ProtectedRoute>
+                <EmailTemplateList />
+              </ProtectedRoute>
+            } />
             <Route path="events/:eventId/emails/templates/new" element={
               <ProtectedRoute>
                 <EmailTemplateForm />
