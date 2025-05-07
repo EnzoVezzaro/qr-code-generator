@@ -37,7 +37,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boole
   
   // If route requires admin and user is not admin
   if (!staffAllowed && user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+    return <div className="flex items-center justify-center min-h-screen text-red-500">You're not authorized, you need admin privileges</div>;
   }
   
   return <>{children}</>;
@@ -65,9 +65,9 @@ function App() {
             <Route path="events" element={<EventList />} />
             <Route path="events/new" element={
               <ProtectedRoute>
-                <EventForm />
+                <EventForm /> 
               </ProtectedRoute>
-            } />
+            } /> 
             <Route path="events/:eventId" element={<ParticipantList />} />
             <Route path="events/:eventId/edit" element={
               <ProtectedRoute>
