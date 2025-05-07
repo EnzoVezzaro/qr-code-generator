@@ -72,6 +72,7 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset, // Import reset function
+    setValue, // Destructure setValue
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: { // Set default values based on fetched eventData or initial values
@@ -107,6 +108,8 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
       }
 
       if (isEditing && eventId) { // Use eventId from useParams
+        // console.log('Updating event with ID:', eventId);
+        // console.log('Update data:', data);
         // Update existing event
         const { error } = await supabase
           .from('events')
@@ -255,6 +258,7 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
                 type="color"
                 className="w-12 h-10 p-1"
                 {...register('check_in_color')}
+                onChange={(e) => setValue('check_in_color', e.target.value)} // Add onChange to update text field
               />
               <Input
                 type="text"

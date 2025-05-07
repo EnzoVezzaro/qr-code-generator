@@ -12,9 +12,11 @@ interface AuthContextType {
   fetchParticipants: (eventId?: string) => Promise<{ data: Participant[] | null; error: string | null }>;
   revokeParticipantAccess: (participantId: string) => Promise<{ success: boolean; error: string | null }>;
   restoreParticipantAccess: (participantId: string) => Promise<{ success: boolean; error: string | null }>;
+  updateEventXhr: (eventId: string, updateData: any) => Promise<{ success: boolean; error: string | null }>; // Added updateEventXhr
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 
 // Define the hook before the provider component
 
@@ -108,11 +110,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       let url;
       if (eventId){
-        url = `${supabaseUrl}/rest/v1/events?id=eq.${eventId}&select=*`;  
+        url = `${supabaseUrl}/rest/v1/events?id=eq.${eventId}&select=*`;
       } else {
-        url = `${supabaseUrl}/rest/v1/events?select=*`;  
+        url = `${supabaseUrl}/rest/v1/events?select=*`;
       }
-      
+
       xhr.open('GET', url);
       xhr.setRequestHeader('apikey', supabaseAnonKey);
       xhr.setRequestHeader('Prefer', 'return=representation');
@@ -174,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         url = `${supabaseUrl}/rest/v1/participants?select=*&order=name.asc`;
       }
-      
+
       xhr.open('GET', url);
       xhr.setRequestHeader('apikey', supabaseAnonKey);
       xhr.setRequestHeader('Prefer', 'return=representation');
@@ -314,10 +316,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('here here');
         const { data: { session } } = await supabase.auth.getSession();
         console.log('here 1: ', session);
-        
+
         if (session?.user) {
           const role = await fetchUserProfile(session.user.id);
-          
+
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -339,15 +341,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (event === 'SIGNED_IN' && session?.user) {
           try {
             const role = await fetchUserProfile(session.user.id);
-            
+
             setUser({
               id: session.user.id,
               email: session.user.email || '',
               role: role,
             });
-          } catch (error) {
-            console.error('Error during auth state change:', error);
-            setUser(null);
+          } catch (err: any){
+            console.warn('Error login: ', err) // Corrected error to err
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -361,266 +362,183 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    return new Promise(resolve => {
-      const xhr = new XMLHttpRequest();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Missing Supabase environment variables');
-        resolve({ success: false, error: 'Missing Supabase configuration' });
-        return;
-      }
-
-      xhr.open('POST', `${supabaseUrl}/auth/v1/token?grant_type=password`);
-      xhr.setRequestHeader('apikey', supabaseAnonKey);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-
-      xhr.onload = function() {
-        console.log('SignIn XHR completed with status:', xhr.status);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            console.log('SignIn Auth response:', response);
-
-            if (response.user && response.access_token) {
-              // Store session manually (Supabase client usually handles this)
-              // For XHR, we might need to store the token and user data
-              // For simplicity here, we'll just use the user data for context state
-              // A more robust solution would involve storing the token in local storage
-              // and setting it in subsequent XHR requests.
-
-              // Fetch user profile after successful authentication
-              fetchUserProfile(response.user.id)
-                .then(role => {
-                  setUser({
-                    id: response.user.id,
-                    email: response.user.email || '',
-                    role: role,
-                  });
-                  resolve({ success: true });
-                })
-                .catch(profileError => {
-                  console.error('Error fetching profile after signin:', profileError);
-                  const errorMessage = (profileError instanceof Error) ? profileError.message : 'Failed to fetch user profile';
-                  resolve({ success: false, error: errorMessage });
-                });
-
-            } else {
-              console.error('Auth response missing user data or token');
-              resolve({ success: false, error: 'Invalid response from server' });
-            }
-          } catch (e: unknown) { // Changed any to unknown
-            console.error('Error parsing signin response:', e);
-            resolve({ success: false, error: 'Failed to parse server response' });
-          }
-        } else {
-          console.error('SignIn Auth request failed:', xhr.responseText);
-          let errorMessage = 'Authentication failed';
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse.error_description) {
-              errorMessage = errorResponse.error_description;
-            } else if (errorResponse.msg) {
-               errorMessage = errorResponse.msg;
-            }
-          } catch (parseError) { // Use a different variable name
-            console.error('Error parsing signin error response:', parseError); // Log parsing error
-            // Ignore parsing error if response is not JSON, keep generic message
-          }
-          resolve({ success: false, error: errorMessage });
-        }
-      };
-
-      xhr.onerror = function() {
-        console.error('SignIn XHR error');
-        resolve({ success: false, error: 'Network error during sign in' });
-      };
-
-      xhr.ontimeout = function() {
-        console.error('SignIn XHR timed out');
-        resolve({ success: false, error: 'Request timed out' });
-      };
-
-      // Set timeout (e.g., 15 seconds)
-      xhr.timeout = 15000;
-
-      // Send the request
-      console.log('Sending SignIn XHR request');
-      xhr.send(JSON.stringify({
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      }));
-    }) as Promise<{ success: boolean; error?: string; }>; // Explicitly type the Promise resolve
+      });
+
+      if (error) {
+        console.error('Supabase SignIn error:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        // Fetch user profile after successful authentication
+        try {
+          const role = await fetchUserProfile(data.user.id);
+          setUser({
+            id: data.user.id,
+            email: data.user.email || '',
+            role: role,
+          });
+          return { success: true };
+        } catch (profileError) {
+          console.error('Error fetching profile after signin:', profileError);
+          const errorMessage = (profileError instanceof Error) ? profileError.message : 'Failed to fetch user profile';
+          // Even if profile fetch fails, the user is signed in according to Supabase
+          // We might want to handle this case specifically in the UI
+          return { success: false, error: errorMessage };
+        }
+      } else {
+        // This case should ideally not be reached if there's no error,
+        // but as a fallback
+        return { success: false, error: 'Sign in failed: No user data received.' };
+      }
+
+    } catch (e: unknown) {
+      console.error('Unexpected SignIn error:', e);
+      const errorMessage = (e instanceof Error) ? e.message : 'An unexpected error occurred during sign in.';
+      return { success: false, error: errorMessage };
+    }
   };
- 
+
   const signUp = async (name: string, email: string, password: string) => {
-    console.log('Starting direct XHR signup');
-    
-    return new Promise(resolve => {
-      const xhr = new XMLHttpRequest();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Missing Supabase environment variables');
-        resolve({ success: false, error: 'Missing Supabase configuration' });
-        return;
-      }
-
-      xhr.open('POST', `${supabaseUrl}/auth/v1/signup`); // Use environment variable
-      xhr.setRequestHeader('apikey', supabaseAnonKey); // Use environment variable
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      
-      xhr.onload = function() {
-        console.log('SignUp XHR completed with status:', xhr.status);
-        
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            console.log('SignUp Auth response:', response);
-            
-            if (response.user && response.user.id) {
-              // User created successfully, now create profile
-              const profileXhr = new XMLHttpRequest();
-              profileXhr.open('POST', `${supabaseUrl}/rest/v1/profiles`); // Use environment variable
-              profileXhr.setRequestHeader('apikey', supabaseAnonKey); // Use environment variable
-              profileXhr.setRequestHeader('Content-Type', 'application/json');
-              profileXhr.setRequestHeader('Prefer', 'return=minimal');
-              
-              profileXhr.onload = function() {
-                if (profileXhr.status >= 200 && profileXhr.status < 300) {
-                  console.log('Profile created successfully');
-                  // User state will be set by onAuthStateChange listener upon successful signup
-                  resolve({ success: true });
-                } else {
-                  console.error('Profile creation failed:', profileXhr.responseText);
-                  resolve({ success: false, error: 'Failed to create profile' });
-                }
-              };
-              
-              profileXhr.onerror = function() {
-                console.error('Profile XHR error');
-                resolve({ success: false, error: 'Network error during profile creation' });
-              };
-              
-              profileXhr.send(JSON.stringify({
-                id: response.user.id,
-                role: 'staff' // Default new users to 'staff' role
-              }));
-
-            } else {
-              console.error('Auth response missing user data');
-              resolve({ success: false, error: 'Invalid response from server' });
-            }
-          } catch (e: unknown) { // Changed any to unknown
-            console.error('Error parsing signup response:', e);
-            resolve({ success: false, error: 'Failed to parse server response' });
-          }
-        } else {
-          console.error('SignUp Auth request failed:', xhr.responseText);
-           let errorMessage = 'Authentication failed';
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse.error_description) {
-              errorMessage = errorResponse.error_description;
-            } else if (errorResponse.msg) {
-               errorMessage = errorResponse.msg;
-            }
-          } catch (parseError) { // Use a different variable name
-             console.error('Error parsing signup error response:', parseError); // Log parsing error
-            // Ignore parsing error if response is not JSON
-          }
-          resolve({ success: false, error: errorMessage });
-        }
-      };
-      
-      xhr.onerror = function() {
-        console.error('SignUp XHR error');
-        resolve({ success: false, error: 'Network error during signup' });
-      };
-      
-      xhr.ontimeout = function() {
-        console.error('SignUp XHR timed out');
-        resolve({ success: false, error: 'Request timed out' });
-      };
-      
-      // Set timeout to 15 seconds
-      xhr.timeout = 15000;
-      
-      // Send the request
-      console.log('Sending SignUp XHR request');
-      xhr.send(JSON.stringify({
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        data: {
-          name
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Supabase SignUp error:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (data.user && data.user.id) {
+        // User created successfully, now create profile
+        try {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              role: 'staff', // Default new users to 'staff' role
+            });
+
+          if (profileError) {
+            console.error('Profile creation failed:', profileError);
+            // Consider deleting the auth user if profile creation fails
+            return { success: false, error: 'Failed to create user profile' };
+          }
+
+          // User state will be set by onAuthStateChange listener upon successful signup
+          return { success: true };
+
+        } catch (e: unknown) {
+          console.error('Unexpected Profile creation error:', e);
+          const errorMessage = (e instanceof Error) ? e.message : 'An unexpected error occurred during profile creation.';
+          return { success: false, error: errorMessage };
         }
-      }));
-    }) as Promise<{ success: boolean; error?: string; }>; // Explicitly type the Promise resolve
+      } else {
+         // This case might be hit if email confirmation is required
+         // Supabase signUp returns user: null in that case
+         // We should check data.session to be sure
+         if (data.session) {
+            // User signed up and signed in immediately (e.g., email confirmation off)
+             return { success: true };
+         } else {
+            // User signed up, but needs email confirmation
+            return { success: true, error: 'Please check your email to confirm your signup.' };
+         }
+      }
+
+    } catch (e: unknown) {
+      console.error('Unexpected SignUp error:', e);
+      const errorMessage = (e instanceof Error) ? e.message : 'An unexpected error occurred during sign up.';
+      return { success: false, error: errorMessage };
+    }
   };
 
   const signOut = async () => {
-    // Refactor to use XHR
-    return new Promise<void>(resolve => { // Removed async from executor
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase SignOut error:', error);
+      } else {
+        setUser(null); // Clear user state locally on successful sign out
+      }
+    } catch (e: unknown) {
+      console.error('Unexpected SignOut error:', e);
+    }
+  };
+
+  // New function to update event using XHR
+  const updateEventXhr = (eventId: string, updateData: any): Promise<{ success: boolean; error: string | null }> => {
+    return new Promise(async (resolve) => { // Added async here to use await for getSession
       const xhr = new XMLHttpRequest();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      // Get current session using Supabase client method
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        const accessToken = session?.access_token;
 
-        if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
-           console.error('Missing Supabase configuration or access token for sign out');
-           setUser(null); // Clear user state locally even if no token
-           resolve(); // Resolve without error, as sign out just clears local state
-           return;
-        }
+      // Get the current session to include the Authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
 
-        xhr.open('POST', `${supabaseUrl}/auth/v1/logout`);
-        xhr.setRequestHeader('apikey', supabaseAnonKey);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+      if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+        console.error('Missing Supabase configuration or access token for update');
+        resolve({ success: false, error: 'Authentication required for this operation' });
+        return;
+      }
+
+      const url = `${supabaseUrl}/rest/v1/events?id=eq.${eventId}`;
+
+      xhr.open('PATCH', url); // Use PATCH for partial updates
+      xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`); // Include Authorization header
       xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Prefer', 'return=minimal'); // We don't need the updated record back
 
-        xhr.onload = function() {
-          console.log('SignOut XHR completed with status:', xhr.status);
-          // Supabase logout endpoint returns 204 on success
-          if (xhr.status >= 200 && xhr.status < 300) {
-            console.log('Signed out successfully via XHR');
-            setUser(null); // Clear user state locally
-            resolve();
-          } else {
-            console.error('SignOut XHR failed:', xhr.responseText);
-            // Even on failure, we might want to clear local state
-            setUser(null);
-            resolve(); // Resolve the promise
+      xhr.onload = function() {
+        console.log('updateEventXhr XHR completed with status:', xhr.status);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('Event updated successfully via XHR');
+          resolve({ success: true, error: null });
+        } else {
+          console.error('updateEventXhr request failed:', xhr.responseText);
+          let errorMessage = `Failed to update event: ${xhr.status} ${xhr.statusText}`;
+           try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            if (errorResponse.message) {
+              errorMessage = errorResponse.message;
+            }
+          } catch (parseError) {
+             console.error('Error parsing update error response:', parseError);
           }
-        };
+          resolve({ success: false, error: errorMessage });
+        }
+      };
 
-        xhr.onerror = function() {
-          console.error('SignOut XHR error');
-          setUser(null); // Clear user state locally
-          resolve(); // Resolve the promise
-        };
+      xhr.onerror = function() {
+        console.error('updateEventXhr XHR error');
+        resolve({ success: false, error: 'Network error during event update' });
+      };
 
-        xhr.ontimeout = function() {
-          console.error('SignOut XHR timed out');
-          setUser(null); // Clear user state locally
-          resolve(); // Resolve the promise
-        };
+      xhr.ontimeout = function() {
+        console.error('updateEventXhr XHR timed out');
+        resolve({ success: false, error: 'Request timed out' });
+      };
 
-        xhr.timeout = 15000;
+      xhr.timeout = 15000; // Set timeout
 
-        console.log('Sending SignOut XHR request');
-        xhr.send(); // POST request with no body
-      }).catch(error => {
-        console.error('Error getting session for sign out:', error);
-        setUser(null); // Clear user state locally
-        resolve(); // Resolve the promise
-      });
+      console.log('Sending updateEventXhr XHR request');
+      xhr.send(JSON.stringify(updateData));
     });
   };
+
 
   const value = {
     user,
@@ -632,6 +550,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchParticipants,
     revokeParticipantAccess,
     restoreParticipantAccess,
+    updateEventXhr, // Include the new function
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
