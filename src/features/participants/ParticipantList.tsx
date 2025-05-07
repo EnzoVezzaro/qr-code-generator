@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Mail, Download, Plus, QrCode, Ban, RefreshCw } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom'; // Keep Link for other actions for now
+import { Mail, Download, Plus, QrCode, Ban, RefreshCw, Edit } from 'lucide-react';
+import Modal from '@/components/ui/modal'; // Changed casing
+import ParticipantForm from './ParticipantForm';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,42 +16,68 @@ const ParticipantList: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
+
+  const fetchParticipants = async () => {
+    if (!eventId) return;
+    setLoading(true);
+    try {
+      // Fetch event details
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+      if (eventError) throw eventError;
+      setEvent(eventData as Event);
+
+      // Fetch participants for the event
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('name');
+      if (participantsError) throw participantsError;
+      setParticipants(participantsData as Participant[]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      
-      try {
-        // Fetch event details
-        if (eventId) {
-          const { data: eventData, error: eventError } = await supabase
-            .from('events')
-            .select('*')
-            .eq('id', eventId)
-            .single();
-          
-          if (eventError) throw eventError;
-          setEvent(eventData as Event);
-          
-          // Fetch participants for the event
-          const { data: participantsData, error: participantsError } = await supabase
-            .from('participants')
-            .select('*')
-            .eq('event_id', eventId)
-            .order('name');
-          
-          if (participantsError) throw participantsError;
-          setParticipants(participantsData as Participant[]);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchParticipants();
   }, [eventId]);
+
+  const handleOpenAddModal = () => {
+    setEditingParticipant(null);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenEditModal = (participant: Participant) => {
+    setEditingParticipant(participant);
+    setIsAddModalOpen(true); // Re-use the same modal for editing
+  };
+
+  const handleCloseModal = () => {
+    setIsAddModalOpen(false);
+    setEditingParticipant(null);
+  };
+
+  const handleSaveParticipant = (savedParticipant: Participant) => {
+    if (editingParticipant) {
+      // Update existing participant in the list
+      setParticipants(participants.map(p => p.id === savedParticipant.id ? savedParticipant : p));
+    } else {
+      // Add new participant to the list
+      setParticipants([...participants, savedParticipant].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    handleCloseModal();
+    // Optionally, re-fetch all participants to ensure data consistency:
+    // fetchParticipants(); 
+  };
 
   const handleRevokeAccess = async (participantId: string) => {
     try {
@@ -125,7 +153,7 @@ const ParticipantList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Participants</h1>
@@ -137,14 +165,13 @@ const ParticipantList: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to={`/events/${eventId}/participants/add`}>
-              <Plus className="mr-1 h-4 w-4" />
-              Add Participant
-            </Link>
+          <Button variant="outline" size="sm" onClick={handleOpenAddModal}>
+            <Plus className="mr-1 h-4 w-4" />
+            Add Participant
           </Button>
           
           <Button asChild variant="outline" size="sm">
+            {/* TODO: Implement Bulk Import Modal */}
             <Link to={`/events/${eventId}/participants/import`}>
               <Plus className="mr-1 h-4 w-4" />
               Bulk Import
@@ -191,13 +218,12 @@ const ParticipantList: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
-              <Button asChild variant="outline">
-                <Link to={`/events/${eventId}/participants/add`}>
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add Participant
-                </Link>
+              <Button variant="outline" onClick={handleOpenAddModal}>
+                <Plus className="mr-1 h-4 w-4" />
+                Add Participant
               </Button>
               <Button asChild variant="outline">
+                 {/* TODO: Implement Bulk Import Modal */}
                 <Link to={`/events/${eventId}/participants/import`}>
                   <Plus className="mr-1 h-4 w-4" />
                   Bulk Import
@@ -239,9 +265,14 @@ const ParticipantList: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenEditModal(participant)}>
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
                         <Button asChild variant="ghost" size="sm">
-                          <Link to={`/events/${eventId}/participants/${participant.id}`}>
+                          {/* TODO: Implement View QR Modal or Page */}
+                          <Link to={`/events/${eventId}/participants/${participant.id}/qr`}>
                             <QrCode className="h-4 w-4" />
                             <span className="sr-only">View QR</span>
                           </Link>
@@ -252,6 +283,7 @@ const ParticipantList: React.FC = () => {
                             variant="ghost" 
                             size="sm" 
                             onClick={() => handleRestoreAccess(participant.id)}
+                            title="Restore Access"
                           >
                             <RefreshCw className="h-4 w-4 text-success" />
                             <span className="sr-only">Restore Access</span>
@@ -261,6 +293,7 @@ const ParticipantList: React.FC = () => {
                             variant="ghost" 
                             size="sm" 
                             onClick={() => handleRevokeAccess(participant.id)}
+                            title="Revoke Access"
                           >
                             <Ban className="h-4 w-4 text-destructive" />
                             <span className="sr-only">Revoke Access</span>
@@ -274,6 +307,22 @@ const ParticipantList: React.FC = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Add/Edit Participant Modal */}
+      {eventId && (
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={handleCloseModal}
+          title={editingParticipant ? 'Edit Participant' : 'Add New Participant'}
+        >
+          <ParticipantForm
+            eventId={eventId}
+            participant={editingParticipant}
+            onSave={handleSaveParticipant}
+            onCancel={handleCloseModal}
+          />
+        </Modal>
       )}
     </div>
   );

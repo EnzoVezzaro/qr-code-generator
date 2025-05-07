@@ -24,7 +24,7 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -39,13 +39,18 @@ const Signup: React.FC = () => {
     setError(null);
     
     try {
-      const result = await signUp(data.name, data.email, data.password);
-      console.log('result_: ', result);
-      
-      if (result.success) {
-        navigate('/dashboard');
+      const resultSignup = await signUp(data.name, data.email, data.password);
+      if (resultSignup.success) {
+        console.log('resultSignup: ', resultSignup);
+        const resultSignIn = await signIn(data.email, data.password);
+        if (resultSignIn.success){
+          console.log('result_: ', resultSignup, resultSignIn);
+          navigate('/dashboard'); 
+        } else {
+          setError(resultSignIn.error || 'Signup failed. Please try again.');
+        }
       } else {
-        setError(result.error || 'Signup failed. Please try again.');
+        setError(resultSignup.error || 'Signup failed. Please try again.');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
