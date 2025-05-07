@@ -4,6 +4,7 @@ import { Mail, Download, Plus, QrCode, Ban, RefreshCw, Edit } from 'lucide-react
 import Modal from '@/components/ui/Modal'; // Fixed casing
 import ParticipantForm from './ParticipantForm';
 import SendEmailModal from '../email/SendEmailModal'; // Import SendEmailModal
+import { QRCodeSVG } from 'qrcode.react'; // Import QRCodeSVG
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,8 @@ const ParticipantList: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false); // State for Send Email modal
+  const [isViewQrModalOpen, setIsViewQrModalOpen] = useState(false); // State for View QR modal
+  const [qrParticipant, setQrParticipant] = useState<Participant | null>(null); // State for participant whose QR is being viewed
 
   const { fetchEventDetails, fetchParticipants, revokeParticipantAccess, restoreParticipantAccess } = useAuth();
   const fetchData = async () => {
@@ -62,6 +65,16 @@ const ParticipantList: React.FC = () => {
 
   const handleOpenSendEmailModal = () => {
     setIsSendEmailModalOpen(true);
+  };
+
+  const handleOpenViewQrModal = (participant: Participant) => {
+    setQrParticipant(participant);
+    setIsViewQrModalOpen(true);
+  };
+
+  const handleCloseViewQrModal = () => {
+    setIsViewQrModalOpen(false);
+    setQrParticipant(null);
   };
 
   const handleCloseSendEmailModal = () => {
@@ -276,12 +289,9 @@ const ParticipantList: React.FC = () => {
                           <Edit className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
-                        <Button asChild variant="ghost" size="sm">
-                          {/* TODO: Implement View QR Modal or Page */}
-                          <Link to={`/events/${eventId}/participants/${participant.id}/qr`}>
-                            <QrCode className="h-4 w-4" />
-                            <span className="sr-only">View QR</span>
-                          </Link>
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenViewQrModal(participant)}>
+                          <QrCode className="h-4 w-4" />
+                          <span className="sr-only">View QR</span>
                         </Button>
                         
                         {participant.is_revoked ? (
@@ -316,14 +326,14 @@ const ParticipantList: React.FC = () => {
       )}
 
       {/* Add/Edit Participant Modal */}
-      {eventId && (
+      {(eventId || editingParticipant?.id) && (
         <Modal
           isOpen={isAddModalOpen}
           onClose={handleCloseModal}
           title={editingParticipant ? 'Edit Participant' : 'Add New Participant'}
         >
           <ParticipantForm
-            eventId={eventId}
+            eventId={eventId || editingParticipant?.event_id || ''}
             participant={editingParticipant}
             onSave={handleSaveParticipant}
             onCancel={handleCloseModal}
@@ -338,6 +348,24 @@ const ParticipantList: React.FC = () => {
           onClose={handleCloseSendEmailModal}
           eventId={eventId}
         />
+      )}
+
+      {/* View QR Modal */}
+      {qrParticipant && (
+        <Modal
+          isOpen={isViewQrModalOpen}
+          onClose={handleCloseViewQrModal}
+          title={`QR Code for ${qrParticipant.name}`}
+        >
+          <div className="p-4 flex justify-center">
+            <QRCodeSVG
+              value={qrParticipant.identifier}
+              size={256} // Adjust size as needed
+              level="H"
+              includeMargin={true}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ export interface Event {
   created_at: string;
   updated_at: string;
   created_by: string;
+  participant_count: number; // Added participant count
 }
 
 export interface Participant {

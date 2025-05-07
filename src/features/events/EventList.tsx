@@ -16,12 +16,18 @@ const EventList: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('events')
-          .select('*')
+          .select('*, participants(count)') // Select events and count of participants
           .order('date', { ascending: true });
         
         if (error) throw error;
         
-        setEvents(data as Event[]);
+        // Map the data to include the participant count directly in the event object
+        const eventsWithParticipantCount = data.map(event => ({
+          ...event,
+          participant_count: event.participants.length > 0 ? event.participants[0].count : 0,
+        }));
+
+        setEvents(eventsWithParticipantCount as Event[]);
       } catch (error) {
         console.error('Error fetching events:', error);
       } finally {
@@ -78,8 +84,12 @@ const EventList: React.FC = () => {
               <span>Max participants: {event.max_participants}</span>
             </div>
             <div className="flex items-center gap-1 text-sm">
-              <QrCode className="h-4 w-4 text-muted-foreground" />
-              <span>QR usage limit: {event.qr_usage_limit}</span>
+            <QrCode className="h-4 w-4 text-muted-foreground" />
+            <span>QR usage limit: {event.qr_usage_limit}</span>
+            </div>
+            <div className="flex items-center gap-1 text-sm">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span>Current participants: {event.participant_count}</span>
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">

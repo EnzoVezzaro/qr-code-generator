@@ -43,6 +43,8 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({ eventId, participant,
     }
 
     try {
+      console.log('event: ', participant, eventId);
+      
       let savedParticipant;
       const participantData = {
         name,
