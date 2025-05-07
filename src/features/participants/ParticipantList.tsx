@@ -20,7 +20,6 @@ const ParticipantList: React.FC = () => {
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
 
   const { fetchEventDetails, fetchParticipants, revokeParticipantAccess, restoreParticipantAccess } = useAuth();
-  console.log('eventId: ', eventId, event);
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -30,10 +29,7 @@ const ParticipantList: React.FC = () => {
       setEvent(eventData); 
 
       // Fetch participants for the event
-      console.log('here 0');
-      
       const { data: participantsData, error: participantsError } = await fetchParticipants(eventId);
-      console.log('here 1');
       if (participantsError) throw new Error(participantsError);
       setParticipants(participantsData || []);
     } catch (error) {
@@ -43,10 +39,7 @@ const ParticipantList: React.FC = () => {
     }
   };
 
-  console.log('cdvvffvvf: ', event);
-
   useEffect(() => {
-    console.log('4444');
     fetchData();
   }, []); // Add dependencies
 

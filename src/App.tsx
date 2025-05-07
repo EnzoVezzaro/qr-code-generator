@@ -18,7 +18,9 @@ import QRCodeGenerator from './features/participants/QRCodeGenerator';
 import QRCodeDownloader from './features/participants/QRCodeDownloader';
 import CheckInScanner from './features/check-in/CheckInScanner';
 import EmailTemplateForm from './features/email/EmailTemplateForm';
+import EmailTemplateList from './features/email/EmailTemplateList';
 import Signup from './pages/signup';
+import ReportsPage from './pages/ReportsPage';
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boolean }> = ({ 
@@ -89,6 +91,13 @@ function App() {
             <Route path="events/:eventId/qr-codes/download" element={<QRCodeDownloader />} />
             
             {/* Check-in */}
+            <Route path="check-in-manager" element={
+              <ProtectedRoute staffAllowed={true}>
+                <div className="p-4">
+                  <CheckInScanner />
+                </div>
+              </ProtectedRoute>
+            } />
             <Route path="events/:eventId/check-in" element={
               <ProtectedRoute staffAllowed={true}>
                 <div className="p-4">
@@ -103,8 +112,32 @@ function App() {
                 <EmailTemplateForm />
               </ProtectedRoute>
             } />
-          </Route>
-          
+            
+            {/* Email Templates */}
+            <Route path="email-templates" element={
+              <ProtectedRoute>
+                <EmailTemplateList />
+              </ProtectedRoute>
+            } />
+            <Route path="email-templates/new" element={
+              <ProtectedRoute>
+                <EmailTemplateForm />
+              </ProtectedRoute>
+            } />
+             <Route path="email-templates/:templateId/edit" element={
+              <ProtectedRoute>
+                <EmailTemplateForm isEditing={true} />
+            </ProtectedRoute>
+          } />
+
+            {/* Reports */}
+            <Route path="reports" element={
+              <ProtectedRoute staffAllowed={true}>
+                <ReportsPage />
+              </ProtectedRoute>
+            } />
+        </Route>
+
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
         </Routes>

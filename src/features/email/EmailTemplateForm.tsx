@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { EmailTemplate } from '@/types';
+import { EmailTemplate, EventSelectOption } from '@/types'; // Import EventSelectOption type
 
 const templateSchema = z.object({
   name: z.string().min(3, 'Template name must be at least 3 characters'),
   subject: z.string().min(3, 'Subject must be at least 3 characters'),
   content: z.string().min(10, 'Email content must be at least 10 characters'),
+  eventId: z.string().optional(), // Add optional eventId
 });
 
 type TemplateFormData = z.infer<typeof templateSchema>;
@@ -26,8 +27,33 @@ interface EmailTemplateFormProps {
 
 const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ template, isEditing = false }) => {
   const navigate = useNavigate();
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId: routeEventId } = useParams<{ eventId: string }>(); // Rename route eventId
   const { user } = useAuth();
+
+  const [events, setEvents] = useState<EventSelectOption[]>([]); // Changed type to EventSelectOption[]
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setEventsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('id, name')
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+        setEvents(data || []);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        // TODO: Add proper error handling/notification
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []); // Fetch events on component mount
 
   const {
     register,
@@ -39,7 +65,8 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ template, isEditi
       ? {
           name: template.name,
           subject: template.subject,
-          content: template.content,
+          content: template.body, // Use template.body
+          eventId: template.event_id || '', // Set default eventId if exists
         }
       : {
           name: '',
@@ -56,6 +83,7 @@ See you there!
 
 Best regards,
 The Event Team`,
+          eventId: routeEventId || '', // Set default eventId from route if exists
         },
   });
 
@@ -65,9 +93,10 @@ The Event Team`,
         throw new Error('You must be logged in to create or edit email templates');
       }
 
-      if (!eventId) {
-        throw new Error('Event ID is required');
-      }
+      // Allow saving without eventId for global templates
+      // if (!eventId) {
+      //   throw new Error('Event ID is required');
+      // }
 
       if (isEditing && template) {
         // Update existing template
@@ -76,7 +105,7 @@ The Event Team`,
           .update({
             name: data.name,
             subject: data.subject,
-            content: data.content,
+            body: data.content,
             updated_at: new Date().toISOString(),
           })
           .eq('id', template.id);
@@ -87,10 +116,10 @@ The Event Team`,
         const { error } = await supabase
           .from('email_templates')
           .insert({
-            event_id: eventId,
+            event_id: data.eventId || null, // Use selected eventId, or null for global
             name: data.name,
             subject: data.subject,
-            content: data.content,
+            body: data.content,
             created_by: user.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -99,7 +128,8 @@ The Event Team`,
         if (error) throw error;
       }
 
-      navigate(`/events/${eventId}/emails`);
+      // Navigate to event emails page if eventId exists, otherwise navigate to dashboard
+      navigate(data.eventId ? `/events/${data.eventId}/emails` : '/email-templates'); // Navigate to list after saving
     } catch (error) {
       console.error('Error saving template:', error);
       // TODO: Add proper error handling/notification
@@ -142,6 +172,28 @@ The Event Team`,
             )}
           </div>
 
+          {/* Event Select Dropdown */}
+          {!isEditing && ( // Only show dropdown when creating
+            <div className="space-y-2">
+              <Label htmlFor="eventId">Associate with Event (Optional)</Label>
+              <select
+                id="eventId"
+                {...register('eventId')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={eventsLoading}
+              >
+                <option value="">-- Select an Event --</option>
+                {events.map(event => (
+                  <option key={event.id} value={event.id}>{event.name}</option>
+                ))}
+              </select>
+              {eventsLoading && <p className="text-sm text-muted-foreground">Loading events...</p>}
+              {errors.eventId && (
+                <p className="text-sm text-destructive">{errors.eventId.message}</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="content">Email Content</Label>
             <div className="border rounded-md bg-background">
@@ -171,7 +223,7 @@ The Event Team`,
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(`/events/${eventId}/emails`)}
+            onClick={() => navigate(routeEventId ? `/events/${routeEventId}/emails` : '/email-templates')} // Use routeEventId for cancel
           >
             Cancel
           </Button>

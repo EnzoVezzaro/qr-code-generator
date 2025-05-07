@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,36 +30,75 @@ const eventSchema = z.object({
 type EventFormData = z.infer<typeof eventSchema>;
 
 interface EventFormProps {
-  event?: Event;
+  // event prop is no longer needed as data is fetched internally
   isEditing?: boolean;
 }
 
-const EventForm: React.FC<EventFormProps> = ({ event, isEditing = false }) => {
+const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
   const navigate = useNavigate();
+  const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
   const { user } = useAuth();
+
+  const [eventData, setEventData] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(isEditing); // Set loading initially if editing
+
+  useEffect(() => {
+    if (isEditing && eventId) {
+      const fetchEvent = async () => {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', eventId)
+            .single();
+
+          if (error) throw error;
+          setEventData(data as Event);
+        } catch (error) {
+          console.error('Error fetching event:', error);
+          // TODO: Add proper error handling/notification
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchEvent();
+    }
+  }, [isEditing, eventId]); // Fetch when isEditing or eventId changes
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset, // Import reset function
   } = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
-    defaultValues: event
-      ? {
-          name: event.name,
-          date: event.date.split('T')[0], // Format for date input
-          location: event.location,
-          max_participants: event.max_participants,
-          qr_usage_limit: event.qr_usage_limit,
-          check_in_message: event.check_in_message ?? '',
-          check_in_color: event.check_in_color ?? '',
-        }
-      : {
-          max_participants: 100,
-          qr_usage_limit: 1,
-          check_in_color: '#7C3AED',
-        },
+    defaultValues: { // Set default values based on fetched eventData or initial values
+      name: eventData?.name || '',
+      date: eventData?.date.split('T')[0] || '', // Format for date input
+      location: eventData?.location || '',
+      max_participants: eventData?.max_participants || 100,
+      qr_usage_limit: eventData?.qr_usage_limit || 1,
+      check_in_message: eventData?.check_in_message ?? '',
+      check_in_color: eventData?.check_in_color ?? '#7C3AED',
+    },
   });
+
+  // Reset form with fetched data when eventData changes
+  useEffect(() => {
+    if (eventData) {
+      reset({
+        name: eventData.name,
+        date: eventData.date.split('T')[0],
+        location: eventData.location,
+        max_participants: eventData.max_participants,
+        qr_usage_limit: eventData.qr_usage_limit,
+        check_in_message: eventData.check_in_message ?? '',
+        check_in_color: eventData.check_in_color ?? '',
+      });
+    }
+  }, [eventData, reset]);
 
   const onSubmit = async (data: EventFormData) => {
     try {
@@ -67,7 +106,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, isEditing = false }) => {
         throw new Error('You must be logged in to create or edit events');
       }
 
-      if (isEditing && event) {
+      if (isEditing && eventId) { // Use eventId from useParams
         // Update existing event
         const { error } = await supabase
           .from('events')
@@ -80,11 +119,11 @@ const EventForm: React.FC<EventFormProps> = ({ event, isEditing = false }) => {
             check_in_message: data.check_in_message || null,
             check_in_color: data.check_in_color || null,
           })
-          .eq('id', event.id);
+          .eq('id', eventId); // Use eventId from useParams
 
         if (error) throw error;
         
-        navigate(`/events/${event.id}`);
+        navigate(`/events/${eventId}`); // Use eventId from useParams
       } else {
         // Create new event
         const { data: newEvent, error } = await supabase
@@ -110,6 +149,10 @@ const EventForm: React.FC<EventFormProps> = ({ event, isEditing = false }) => {
       // TODO: Add proper error handling/notification
     }
   };
+
+  if (loading) {
+    return <div className="text-center p-8">Loading event details...</div>;
+  }
 
   return (
     <Card className="w-full max-w-3xl mx-auto">

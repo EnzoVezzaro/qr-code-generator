@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { QrCode, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,10 +30,13 @@ const QRScanner: React.FC<{ onScan: (data: string) => void }> = ({ onScan }) => 
 };
 
 interface CheckInScannerProps {
-  eventId: string;
+  eventId?: string; // Make eventId prop optional
 }
 
-const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId }) => {
+const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp }) => {
+  const { eventId: eventIdParam } = useParams<{ eventId: string }>();
+  const eventId = eventIdProp || eventIdParam; // Use prop if provided, otherwise use param
+
   const [event, setEvent] = useState<Event | null>(null);
   const [scanResult, setScanResult] = useState<QRValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,10 +59,10 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId }) => {
     };
 
     fetchEvent();
-  }, [eventId]);
+  }, [eventId]); // Update dependency array
 
   const handleScan = async (data: string) => {
-    if (!data || loading) return;
+    if (!data || loading || !eventId) return; // Ensure eventId is available
     
     setLoading(true);
     setScanResult(null);
@@ -140,7 +144,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId }) => {
       const { error: checkInError } = await supabase
         .from('check_ins')
         .insert({
-          event_id: eventId,
+          event_id: eventId, // Use the determined eventId
           participant_id: scanResult.participant.id,
           ip_address: '127.0.0.1', // This would be the real IP in production
           device_info: deviceInfo(),

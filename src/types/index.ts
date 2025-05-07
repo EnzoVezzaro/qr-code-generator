@@ -43,12 +43,18 @@ export interface CheckIn {
   participant?: Participant;
 }
 
+// Interface for event data used in select dropdowns
+export interface EventSelectOption {
+  id: string;
+  name: string;
+}
+
 export interface EmailTemplate {
   id: string;
-  event_id: string;
+  event_id: string | null; // event_id can be null for global templates
   name: string;
   subject: string;
-  content: string;
+  body: string; // Changed from content to body
   created_at: string;
   updated_at: string;
   created_by: string;
