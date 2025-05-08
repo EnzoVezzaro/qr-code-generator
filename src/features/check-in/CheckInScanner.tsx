@@ -12,10 +12,10 @@ import Modal from '@/components/ui/Modal'; // Assuming a Modal component exists
 import { useAuth } from '@/context/AuthContext';
 
 interface CheckInScannerProps {
-  eventId?: string; // Make eventId prop optional
+  title?: string;
 }
 
-const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp }) => {
+const CheckInScanner: React.FC<CheckInScannerProps> = ({ title }) => {
   // const { eventId: eventIdParam } = useParams<{ eventId: string }>();
   // const eventId = eventIdProp || eventIdParam; // Use prop if provided, otherwise use param
   const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
@@ -238,7 +238,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
 
   return (
     <div className="mx-auto max-w-md">
-      <h2 className="text-2xl font-bold mb-4">Check-In Scanner</h2>
+      <h2 className="text-2xl font-bold mb-4">{title ? title : 'Check-In Scanner'}</h2>
 
       {event && (
         <div className="mb-6">
