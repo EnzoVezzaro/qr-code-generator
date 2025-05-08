@@ -28,6 +28,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
   const [processing, setProcessing] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [participantToConfirm, setParticipantToConfirm] = useState<Participant | null>(null);
+  const [isScanningActive, setIsScanningActive] = useState(false); // New state to control scanning
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -49,7 +50,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
   }, [eventId]);
 
   useEffect(() => {
-    if (!webcamRef.current || scanResult || isConfirmModalOpen) return;
+    if (!isScanningActive || !webcamRef.current || scanResult || isConfirmModalOpen) return; // Added !isScanningActive condition
 
     codeReader.current = new BrowserQRCodeReader();
     const hints = new Map();
@@ -90,7 +91,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
     return () => {
       codeReader.current?.reset();
     };
-  }, [webcamRef, scanResult, isConfirmModalOpen]); // Restart scanner when scanResult or modal state changes
+  }, [webcamRef, scanResult, isConfirmModalOpen, isScanningActive]); // Added isScanningActive to dependencies
 
   const handleScan = async (data: string) => {
     if (!data || loading || !eventId) return;
@@ -223,7 +224,8 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
     setScanResult(null);
     setIsConfirmModalOpen(false);
     setParticipantToConfirm(null);
-    // The useEffect will restart the scanner automatically
+    setIsScanningActive(false); // Stop scanning when resetting
+    // The useEffect will restart the scanner automatically when isScanningActive becomes true again
   };
 
   return (
@@ -298,7 +300,7 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
                 {/* The Confirm Check-in button is now in the modal */}
               </div>
             </div>
-          ) : (
+          ) : isScanningActive ? ( // Show webcam and mask when scanning is active
             <div>
               <div className="flex flex-col items-center relative w-full max-w-sm mx-auto overflow-hidden rounded-md"> {/* Added relative positioning, max-width, and overflow hidden */}
                 <Webcam
@@ -315,6 +317,14 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 Scanning for QR codes...
               </p>
+              <Button variant="outline" onClick={() => setIsScanningActive(false)} className="mt-4 w-full">Cancel Scan</Button> {/* Button to cancel scanning */}
+            </div>
+          ) : ( // Show button when not scanning and no result
+            <div className="flex flex-col items-center">
+              <div className="w-full max-w-sm h-64 bg-black/5 rounded-lg flex items-center justify-center mb-4 border-2 border-dashed">
+                <QrCode className="h-16 w-16 text-muted-foreground/50" />
+              </div>
+              <Button onClick={() => setIsScanningActive(true)}>Scan QR Code</Button> {/* Button to start scanning */}
             </div>
           )}
         </CardContent>
