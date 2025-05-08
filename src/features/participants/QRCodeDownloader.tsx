@@ -189,32 +189,61 @@ const QRCodeDownloader = () => {
       pdf.text('Participants:', 10, yOffset);
       yOffset += 10;
 
+      // Define table parameters
+      const tableStartX = 10;
+      const participantColWidth = 120; // Adjust as needed
+      const qrCodeColWidth = 40; // Adjust as needed
+      const rowHeight = 30; // Adjust as needed to accommodate content and padding
+      const qrImageSizePDF = 25; // Smaller size for PDF
+
+      // Add table headers
+      pdf.setFontSize(12);
+      pdf.text('Participant', tableStartX + 2, yOffset + 7);
+      pdf.text('QR Code', tableStartX + participantColWidth + 2, yOffset + 7);
+      yOffset += 10; // Space after headers
+
+      // Draw header row bottom border
+      pdf.line(tableStartX, yOffset, tableStartX + participantColWidth + qrCodeColWidth, yOffset);
+      yOffset += 5; // Space after header border
+
       for (const result of validResults) {
         if (result && result.pngDataUrl) {
           const participant = participants.find(p => p.identifier === result.identifier);
           if (!participant) continue;
-          
-          // Add participant info
-          pdf.setFontSize(12);
-          const textX = 20;
-          const qrImageSize = 40;
-          const qrImageX = textX + 80; // Adjust this value to position the QR code next to the text
-          const textY = yOffset;
 
-          pdf.text(`Name: ${participant.name}`, textX, textY);
-          pdf.text(`Identifier: ${participant.identifier}`, textX, textY + 7); // Position identifier below name
-
-          // Add QR code image next to the text
-          pdf.addImage(result.pngDataUrl, 'PNG', qrImageX, textY, qrImageSize, qrImageSize);
-
-          // Update yOffset for the next participant, considering the height of the QR code or text, whichever is greater
-          yOffset += Math.max(qrImageSize, 14) + 10; // 14 is roughly the height of two lines of text
-
-          // Add new page if needed
-          if (yOffset > pdf.internal.pageSize.height - 20) {
+          // Check if new page is needed before drawing the row
+          if (yOffset + rowHeight > pdf.internal.pageSize.height - 20) {
             pdf.addPage();
-            yOffset = 10;
+            yOffset = 10; // Reset yOffset for new page
+             // Add table headers on new page
+            pdf.setFontSize(12);
+            pdf.text('Participant', tableStartX + 2, yOffset + 7);
+            pdf.text('QR Code', tableStartX + participantColWidth + 2, yOffset + 7);
+            yOffset += 10; // Space after headers
+
+            // Draw header row bottom border on new page
+            pdf.line(tableStartX, yOffset, tableStartX + participantColWidth + qrCodeColWidth, yOffset);
+            yOffset += 5; // Space after header border
           }
+
+          // Draw row borders
+          pdf.rect(tableStartX, yOffset, participantColWidth, rowHeight);
+          pdf.rect(tableStartX + participantColWidth, yOffset, qrCodeColWidth, rowHeight);
+
+          // Add participant info in the first column, vertically centered
+          pdf.setFontSize(10); // Smaller font size for participant info
+          const participantInfoTextHeight = 10; // Estimate height of the two lines of text
+          const participantInfoY = yOffset + (rowHeight - participantInfoTextHeight) / 2;
+          pdf.text(`Name: ${participant.name}`, tableStartX + 5, participantInfoY);
+          pdf.text(`Email: ${participant.email}`, tableStartX + 5, participantInfoY + 5);
+          pdf.text(`Identifier: ${participant.identifier}`, tableStartX + 5, participantInfoY + 10); // Adjust vertical spacing
+
+          // Add QR code image in the second column, centered vertically
+          const qrCodeY = yOffset + (rowHeight - qrImageSizePDF) / 2;
+          pdf.addImage(result.pngDataUrl, 'PNG', tableStartX + participantColWidth + (qrCodeColWidth - qrImageSizePDF) / 2, qrCodeY, qrImageSizePDF, qrImageSizePDF);
+
+          // Move yOffset to the next row
+          yOffset += rowHeight;
         }
       }
 
