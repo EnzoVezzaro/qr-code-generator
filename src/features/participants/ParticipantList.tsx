@@ -218,7 +218,7 @@ const ParticipantList: React.FC = () => {
         }
       </div>
       
-      <div>
+      <div className='mt-4 mb-4'>
         <Input
           placeholder="Search by name, email, or ID..."
           value={search}

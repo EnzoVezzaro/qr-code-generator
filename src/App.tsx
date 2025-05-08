@@ -25,6 +25,8 @@ import EmailTemplateForm from './features/email/EmailTemplateForm';
 import EmailTemplateList from './features/email/EmailTemplateList';
 import Signup from './pages/signup';
 import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage'; // Import SettingsPage
+import SecurityPage from './pages/SecurityPage'; // Import SecurityPage
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boolean }> = ({ 
@@ -142,6 +144,20 @@ function App() {
             <Route path="reports" element={
               <ProtectedRoute staffAllowed={true}>
                 <ReportsPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Settings */}
+            <Route path="settings" element={
+              <ProtectedRoute staffAllowed={true}>
+                <SettingsPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Security */}
+            <Route path="security" element={
+              <ProtectedRoute staffAllowed={true}>
+                <SecurityPage />
               </ProtectedRoute>
             } />
         </Route>
