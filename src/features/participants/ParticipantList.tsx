@@ -33,18 +33,33 @@ const ParticipantList: React.FC = () => {
     try {
       // Fetch event details
       const { data: eventData, error: eventError } = await fetchEventDetails(eventId);
-      if (eventError) throw new Error(eventError.message); // Use error.message
+      if (eventError) throw new Error(eventError); // Use error.message
       setEvent(eventData); 
 
       // Fetch participants for the event
       const { data: participantsData, error: participantsError } = await fetchParticipants(eventId);
-      if (participantsError) throw new Error(participantsError.message);
+      if (participantsError) throw new Error(participantsError);
       
       // Fetch check-ins for the event
-      const { data: checkInsData, error: checkInsError } = await supabase
-        .from('check_ins')
-        .select('participant_id')
-        .eq('event_id', eventId);
+      let checkInsData = null;
+      let checkInsError = null;
+
+      if (eventId) {
+        const { data, error } = await supabase
+          .from('check_ins')
+          .select('participant_id')
+          .eq('event_id', eventId);
+
+        checkInsData = data;
+        checkInsError = error;
+      } else {
+        const { data, error } = await supabase
+          .from('check_ins')
+          .select('participant_id')
+
+        checkInsData = data;
+        checkInsError = error;
+      }
 
       if (checkInsError) throw new Error(checkInsError.message);
 
@@ -76,9 +91,7 @@ const ParticipantList: React.FC = () => {
   };
 
   useEffect(() => {
-    if (eventId) { // Ensure eventId is available before fetching
-      fetchData();
-    }
+    fetchData();
   }, [eventId]); // Add eventId to dependencies
 
   const handleOpenAddModal = () => {
