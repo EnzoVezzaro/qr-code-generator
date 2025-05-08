@@ -45,13 +45,13 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
     defaultValues: {
       name: '',
       subject: '',
-      content: `Dear {name},
+      content: `Dear {{name}},
 
-We're excited to have you join us for {event}!
+We're excited to have you join us for {{event}}!
 
 Your personal QR code is attached to this email. Please bring it with you to the event for quick check-in.
 
-You can also access your QR code at any time by visiting: {qr_link}
+You can also access your QR code at any time by visiting: {{qr_link}}
 
 See you there!
 
@@ -250,9 +250,9 @@ The Event Team`,
             <div className="p-3 bg-muted rounded-md mt-2">
               <p className="text-sm font-medium mb-1">Available variables:</p>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{name}'}</code> - Participant's name</li>
-                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{event}'}</code> - Event name</li>
-                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{qr_link}'}</code> - Link to participant's QR code</li>
+                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{name}}'}</code> - Participant's name</li>
+                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{event}}'}</code> - Event name</li>
+                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{qr_link}}'}</code> - Link to participant's QR code</li>
               </ul>
             </div>
           </div>

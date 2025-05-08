@@ -119,6 +119,11 @@ serve(async (req) => {
       );
     }
 
+    const { data: eventData } = await supabaseClient
+      .from("events")
+      .select("*")
+      .eq("id", eventId);
+
     // Fetch participant details
     const { data: participants, error: participantsError } = await supabaseClient
       .from("participants")
@@ -143,7 +148,7 @@ serve(async (req) => {
       let resendId = null;
 
       try {
-        const emailContent = processTemplate(template.body, participant);
+        const emailContent = processTemplate(template.body, participant, eventData);
 
         const { data, error: resendError } = await resend.emails.send({
           from: 'onboarding@resend.dev', // Replace with your verified sender email
@@ -179,7 +184,7 @@ serve(async (req) => {
           recipient_email: participant.email,
           recipient_name: participant.name,
           subject: template.subject,
-          content: processTemplate(template.body, participant), // Store processed content
+          content: processTemplate(template.body, participant, eventData), // Store processed content
           sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
           error_message: errorMessage,
           resend_id: resendId, // Store Resend ID
@@ -221,16 +226,17 @@ serve(async (req) => {
 // Helper function to process template with participant data
 interface ProcessTemplateParticipant {
   name?: string;
-  email?: string;
+  qr_token?: string;
   // Add other participant properties used in templates here
 }
 
-function processTemplate(templateContent: string, participant: ProcessTemplateParticipant): string {
+function processTemplate(templateContent: string, participant: ProcessTemplateParticipant, eventData: any): string {
   let content = templateContent;
   
   // Replace template variables with actual values
   content = content.replace(/{{name}}/g, participant.name || "");
-  content = content.replace(/{{email}}/g, participant.email || "");
+  content = content.replace(/{{event}}/g, eventData.name || "");
+  content = content.replace(/{{qr_link}}/g, participant.qr_token || "");
   
   // Add more replacements as needed
   // For example, you might want to include event details, ticket info, etc.
