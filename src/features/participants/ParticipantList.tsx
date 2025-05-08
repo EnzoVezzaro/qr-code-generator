@@ -11,7 +11,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
-import { Participant, Event } from '@/types';
+import { Participant, Event, CheckIn } from '@/types'; // Import CheckIn type
+import { supabase } from '@/lib/supabase'; // Import supabase
 
 const ParticipantList: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -32,23 +33,53 @@ const ParticipantList: React.FC = () => {
     try {
       // Fetch event details
       const { data: eventData, error: eventError } = await fetchEventDetails(eventId);
-      if (eventError) throw new Error(eventError);
+      if (eventError) throw new Error(eventError.message); // Use error.message
       setEvent(eventData); 
 
       // Fetch participants for the event
       const { data: participantsData, error: participantsError } = await fetchParticipants(eventId);
-      if (participantsError) throw new Error(participantsError);
-      setParticipants(participantsData || []);
-    } catch (error) {
+      if (participantsError) throw new Error(participantsError.message);
+      
+      // Fetch check-ins for the event
+      const { data: checkInsData, error: checkInsError } = await supabase
+        .from('check_ins')
+        .select('participant_id')
+        .eq('event_id', eventId);
+
+      if (checkInsError) throw new Error(checkInsError.message);
+
+      // Create a set of participant IDs who have checked in
+      const checkedInParticipantIds = new Set(checkInsData?.map((checkIn: Pick<CheckIn, 'participant_id'>) => checkIn.participant_id)); // Explicitly type checkIn
+
+      // Add isCheckedIn property to participants
+      const participantsWithCheckInStatus = participantsData?.map(participant => ({
+        ...participant,
+        isCheckedIn: checkedInParticipantIds.has(participant.id),
+      })) || [];
+
+      setParticipants(participantsWithCheckInStatus);
+
+    } catch (error: unknown) { // Handle error as unknown
       console.error('Error fetching data:', error);
+      // Use a type guard to check if error is an Error and has a message property
+      if (error instanceof Error && error.message) {
+        console.error('Error message:', error.message);
+      } else if (typeof error === 'string') {
+        console.error('Error message:', error); // Log the string directly
+      } else {
+        console.error('Unknown error:', error); // Handle other unknown error types
+      }
+      setParticipants([]); // Set participants to empty on error
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []); // Add dependencies
+    if (eventId) { // Ensure eventId is available before fetching
+      fetchData();
+    }
+  }, [eventId]); // Add eventId to dependencies
 
   const handleOpenAddModal = () => {
     setEditingParticipant(null);
@@ -280,11 +311,13 @@ const ParticipantList: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        participant.is_revoked
-                          ? 'bg-destructive/10 text-destructive'
-                          : 'bg-success/10 text-success'
+                        participant.isCheckedIn
+                          ? 'bg-success/10 text-success' // Style for checked in (inverted)
+                          : participant.is_revoked
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-primary/10 text-primary' // Style for registered (not revoked, not checked in) (inverted)
                       }`}>
-                        {participant.is_revoked ? 'Revoked' : 'Active'}
+                        {participant.isCheckedIn ? 'Checked In' : (participant.is_revoked ? 'Revoked' : 'Registered')} {/* Updated status text */}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
@@ -363,7 +396,7 @@ const ParticipantList: React.FC = () => {
         >
           <div className="p-4 flex justify-center">
             <QRCodeSVG
-              value={qrParticipant.identifier}
+              value={qrParticipant.qr_token}
               size={256} // Adjust size as needed
               level="H"
               includeMargin={true}

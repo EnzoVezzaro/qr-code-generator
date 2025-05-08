@@ -9,6 +9,7 @@ import { deviceInfo } from '@/lib/utils';
 import Webcam from 'react-webcam';
 import { BrowserQRCodeReader, DecodeHintType } from '@zxing/library';
 import Modal from '@/components/ui/Modal'; // Assuming a Modal component exists
+import { useAuth } from '@/context/AuthContext';
 
 interface CheckInScannerProps {
   eventId?: string; // Make eventId prop optional
@@ -19,6 +20,8 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
   // const eventId = eventIdProp || eventIdParam; // Use prop if provided, otherwise use param
   const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
 
+  const { user } = useAuth();
+  
   const [event, setEvent] = useState<Event | null>(null);
   const [scanResult, setScanResult] = useState<QRValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,12 +73,14 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
           { video: { deviceId: selectedDeviceId } },
           webcamRef.current?.video as HTMLVideoElement,
           (result, error) => {
-            if (result) {
+            if (result) { 
+              console.log('QR Code detected:', result.getText()); // Added logging
               handleScan(result.getText());
               codeReader.current?.reset(); // Stop scanning after a successful scan
             }
-            if (error && !(error instanceof Error && error.message.includes('No QR code found'))) {
-              console.error('QR scan error:', error);
+            if (error) {
+              // Log all errors, including 'No QR code found' for debugging
+              console.error('QR scan error:', error); // Modified logging
               // Optionally set a scanResult for scan errors
             }
           }
@@ -101,10 +106,10 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
     setParticipantToConfirm(null); // Clear previous participant to confirm
 
     try {
+      console.log('here: ', data);
+      
       // Extract QR token from scanned URL
-      const url = new URL(data);
-      const pathParts = url.pathname.split('/');
-      const token = pathParts[pathParts.length - 1];
+      const token = data;
 
       // Validate the token
       const { data: participant, error } = await supabase
@@ -114,6 +119,8 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
         .eq('events.id', eventId)
         .single();
 
+      console.log('getting info: ', participant, token, eventId);
+      
       if (error) {
         setScanResult({
           valid: false,
@@ -175,7 +182,8 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp })
           participant_id: participantToConfirm.id, // Use participantToConfirm
           ip_address: '127.0.0.1', // This would be the real IP in production
           device_info: deviceInfo(),
-          processed_by: 'current-user-id', // This would be the actual user ID
+          processed_by: user?.id,
+          checked_in_at: new Date()
         });
 
       if (checkInError) throw checkInError;

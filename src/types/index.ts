@@ -31,6 +31,7 @@ export interface Participant {
   is_revoked: boolean;
   created_at: string;
   updated_at: string;
+  isCheckedIn?: boolean; // Added check-in status
 }
 
 export interface CheckIn {
