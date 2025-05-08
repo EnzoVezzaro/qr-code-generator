@@ -5,6 +5,7 @@ import Modal from '@/components/ui/Modal'; // Fixed casing
 import ParticipantForm from './ParticipantForm';
 import SendEmailModal from '../email/SendEmailModal'; // Import SendEmailModal
 import { QRCodeSVG } from 'qrcode.react'; // Import QRCodeSVG
+import BulkImportModal from './BulkImportModal'; // Import BulkImportModal
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ const ParticipantList: React.FC = () => {
   const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false); // State for Send Email modal
   const [isViewQrModalOpen, setIsViewQrModalOpen] = useState(false); // State for View QR modal
   const [qrParticipant, setQrParticipant] = useState<Participant | null>(null); // State for participant whose QR is being viewed
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false); // State for Bulk Import modal
 
   const { fetchEventDetails, fetchParticipants, revokeParticipantAccess, restoreParticipantAccess } = useAuth();
   const fetchData = async () => {
@@ -65,6 +67,14 @@ const ParticipantList: React.FC = () => {
 
   const handleOpenSendEmailModal = () => {
     setIsSendEmailModalOpen(true);
+  };
+
+  const handleOpenBulkImportModal = () => {
+    setIsBulkImportModalOpen(true);
+  };
+
+  const handleCloseBulkImportModal = () => {
+    setIsBulkImportModalOpen(false);
   };
 
   const handleOpenViewQrModal = (participant: Participant) => {
@@ -190,12 +200,9 @@ const ParticipantList: React.FC = () => {
               Add Participant
             </Button>
             
-            <Button asChild variant="outline" size="sm">
-              {/* TODO: Implement Bulk Import Modal */}
-              <Link to={`/events/${eventId}/participants/import`}>
-                <Plus className="mr-1 h-4 w-4" />
-                Bulk Import
-              </Link>
+            <Button variant="outline" size="sm" onClick={handleOpenBulkImportModal}>
+              <Plus className="mr-1 h-4 w-4" />
+              Bulk Import
             </Button>
             
             <Button variant="outline" size="sm" onClick={exportParticipantsCSV}>
@@ -241,12 +248,9 @@ const ParticipantList: React.FC = () => {
                 <Plus className="mr-1 h-4 w-4" />
                 Add Participant
               </Button>
-              <Button asChild variant="outline">
-                 {/* TODO: Implement Bulk Import Modal */}
-                <Link to={`/events/${eventId}/participants/import`}>
-                  <Plus className="mr-1 h-4 w-4" />
-                  Bulk Import
-                </Link>
+              <Button variant="outline" onClick={handleOpenBulkImportModal}>
+                <Plus className="mr-1 h-4 w-4" />
+                Bulk Import
               </Button>
             </div>
           </CardContent>
@@ -365,6 +369,21 @@ const ParticipantList: React.FC = () => {
               includeMargin={true}
             />
           </div>
+        </Modal>
+      )}
+
+      {/* Bulk Import Modal */}
+      {eventId && (
+        <Modal
+          isOpen={isBulkImportModalOpen}
+          onClose={handleCloseBulkImportModal}
+          title="Bulk Import Participants"
+        >
+          <BulkImportModal
+            eventId={eventId || ''} // Pass eventId
+            onClose={handleCloseBulkImportModal} // Pass close handler
+            onImportSuccess={fetchData} // Pass success handler to refresh list
+          />
         </Modal>
       )}
     </div>

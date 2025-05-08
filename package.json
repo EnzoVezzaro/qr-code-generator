@@ -27,8 +27,10 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
+    "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.4.1",
     "qrcode.react": "^3.1.0",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/file-saver": "^2.0.7",
     "@types/html2canvas": "^1.0.0",
     "@types/jspdf": "^2.0.0",
     "@types/node": "^20.11.17",
