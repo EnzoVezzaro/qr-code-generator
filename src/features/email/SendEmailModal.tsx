@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/Checkbox'; // Fixed casing
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'; // Fixed casing
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { supabase } from '@/lib/supabase';
-import { Participant, EmailTemplate } from '@/types'; // Assuming Participant and EmailTemplate types exist
+import { Participant, EmailTemplate } from '@/types';
 
 interface SendEmailModalProps {
   isOpen: boolean;
@@ -41,27 +41,24 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({ isOpen, onClose, eventI
         const { data: templatesData, error: templatesError } = await supabase
           .from('email_templates')
           .select('*')
-          .or(`event_id.is.null,event_id.eq.${eventId}`); // Fetch global or event-specific templates
+          .or(`event_id.is.null,event_id.eq.${eventId}`);
 
         if (templatesError) throw templatesError;
         setTemplates(templatesData || []);
 
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          setError(error.message);
-        } else {
-          setError('An unknown error occurred while fetching data');
-        }
+      } catch (error: any) {
+        const errorMessage = error.message || 'An unknown error occurred while fetching data';
+        setError(errorMessage);
         console.error('Error fetching data for send email modal:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isOpen) { // Fetch data only when the modal is open
+    if (isOpen) {
       fetchData();
     }
-  }, [isOpen, eventId]); // Refetch when modal opens or eventId changes
+  }, [isOpen, eventId]);
 
   const handleParticipantSelect = (participantId: string, isChecked: boolean) => {
     setSelectedParticipants(prevSelected =>
@@ -80,29 +77,38 @@ const SendEmailModal: React.FC<SendEmailModalProps> = ({ isOpen, onClose, eventI
     setIsSending(true);
     setSendStatus('Sending emails...');
 
-    // TODO: Call Supabase function to send emails asynchronously
-    console.log('Sending emails to participants:', selectedParticipants, 'using template:', selectedTemplateId);
+    try {
+      // Ensure we're sending a valid JSON object
+      const payload = {
+        participantIds: selectedParticipants,
+        templateId: selectedTemplateId,
+        eventId: eventId
+      };
 
-    // Placeholder for Supabase function call
-    // const { data, error } = await supabase.functions.invoke('send-emails', {
-    //   body: { participantIds: selectedParticipants, templateId: selectedTemplateId, eventId: eventId },
-    // });
+      console.log('Sending request with payload:', JSON.stringify(payload));
 
-    // if (error) {
-    //   setSendStatus(`Error sending emails: ${error.message}`);
-    //   console.error('Error invoking send-emails function:', error);
-    // } else {
-    //   setSendStatus('Emails queued for sending.');
-    //   console.log('Send email function invoked:', data);
-    //   // TODO: Implement status tracking
-    // }
+      // Make sure we're using the correct format for the supabase function call
+      const { data, error } = await supabase.functions.invoke('send-emails', {
+        body: payload
+      })
 
-    // Simulate sending for now
-    setTimeout(() => {
-      setSendStatus('Emails queued for sending (simulated).');
+      if (error) {
+        throw error;
+      }
+
+      console.log('Function response:', data);
+      setSendStatus('Emails queued for sending successfully.');
+      
+      // Optional: close modal after a delay
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error invoking send-emails function:', error);
+      setSendStatus(`Error sending emails: ${error.message || 'Unknown error'}`);
+    } finally {
       setIsSending(false);
-      // onClose(); // Close modal after queuing
-    }, 2000);
+    }
   };
 
   return (
