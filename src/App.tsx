@@ -34,7 +34,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boole
   staffAllowed = false 
 }) => {
   const { user, loading } = useAuth();
-  console.log('user: ', user, loading);  
   
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;

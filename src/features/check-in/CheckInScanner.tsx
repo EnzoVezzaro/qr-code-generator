@@ -34,8 +34,9 @@ interface CheckInScannerProps {
 }
 
 const CheckInScanner: React.FC<CheckInScannerProps> = ({ eventId: eventIdProp }) => {
-  const { eventId: eventIdParam } = useParams<{ eventId: string }>();
-  const eventId = eventIdProp || eventIdParam; // Use prop if provided, otherwise use param
+  // const { eventId: eventIdParam } = useParams<{ eventId: string }>();
+  // const eventId = eventIdProp || eventIdParam; // Use prop if provided, otherwise use param
+  const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
 
   const [event, setEvent] = useState<Event | null>(null);
   const [scanResult, setScanResult] = useState<QRValidationResult | null>(null);
