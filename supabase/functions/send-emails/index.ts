@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend"; // Import Resend
+import QRCode from 'https://esm.sh/qrcode'; // Import qrcode library
 
 console.log("Hello from send-emails function!");
 
@@ -45,13 +46,13 @@ serve(async (req) => {
     // For JSON, req.json() is generally preferred over req.text() + JSON.parse()
     console.log("Received request:", req); // Log the entire request object for more context
 
-    let body;
-    let rawBodyText = null;
+    let body: any; // Keep any for now as the structure is dynamic
+    let rawBodyText: string | null = null;
     try {
       // Attempt to parse the request body as JSON
       body = await req.json();
       console.log("Received request body (parsed):", body);
-    } catch (jsonError: any) {
+    } catch (jsonError: unknown) { // Use unknown for caught errors
       console.error("Error parsing request body as JSON:", jsonError);
       // If parsing fails, try reading as text for debugging the raw content
       try {
@@ -59,11 +60,11 @@ serve(async (req) => {
         const reqClone = req.clone();
         rawBodyText = await reqClone.text();
         console.log("Received request body (raw text):", rawBodyText);
-      } catch (textError) {
+      } catch (textError: unknown) { // Use unknown for caught errors
          console.error("Also failed to read request body as text:", textError);
          // If reading as text also fails, return a generic error
          return new Response(
-          JSON.stringify({ error: "Failed to read request body", details: jsonError.message }),
+          JSON.stringify({ error: "Failed to read request body", details: textError instanceof Error ? textError.message : String(textError) }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
       }
@@ -72,7 +73,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: "Invalid JSON in request body", 
-          details: jsonError.message, 
+          details: jsonError instanceof Error ? jsonError.message : String(jsonError), 
           rawBody: rawBodyText 
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -80,7 +81,7 @@ serve(async (req) => {
     }
 
     // Validate required parameters
-    const { participantIds, templateId, eventId } = body;
+    const { participantIds, templateId, eventId } = body as { participantIds: string[], templateId: string, eventId: string }; // Cast to expected type
     
     if (!participantIds || !Array.isArray(participantIds) || participantIds.length === 0) {
       return new Response(
@@ -148,13 +149,13 @@ serve(async (req) => {
       let resendId = null;
 
       try {
-        const emailContent = processTemplate(template.body, participant, eventData);
+        const emailContent = await processTemplate(template.body, participant, eventData); // Added await here
 
         const { data, error: resendError } = await resend.emails.send({
           from: 'onboarding@resend.dev', // Replace with your verified sender email
           to: participant.email,
           subject: template.subject,
-          html: emailContent, // Or text: emailContent if not HTML
+          html: emailContent, // Now emailContent is the resolved string
         });
 
         if (resendError) {
@@ -174,7 +175,7 @@ serve(async (req) => {
       }
 
       // Log the email sending attempt
-      const { data: logData, error: logError } = await supabaseClient
+      const { error: logError } = await supabaseClient
         .from("email_logs") // Assuming an email_logs table exists
         .insert({
           participant_id: participant.id,
@@ -184,7 +185,7 @@ serve(async (req) => {
           recipient_email: participant.email,
           recipient_name: participant.name,
           subject: template.subject,
-          content: processTemplate(template.body, participant, eventData), // Store processed content
+          content: await processTemplate(template.body, participant, eventData), // Store processed content, await the promise
           sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
           error_message: errorMessage,
           resend_id: resendId, // Store Resend ID
@@ -225,18 +226,39 @@ serve(async (req) => {
 
 // Helper function to process template with participant data
 interface ProcessTemplateParticipant {
+  id: string; // Assuming participant has an id
   name?: string;
   qr_token?: string;
+  email: string; // Assuming participant has an email
   // Add other participant properties used in templates here
 }
 
-function processTemplate(templateContent: string, participant: ProcessTemplateParticipant, eventData: any): string {
+async function processTemplate(templateContent: string, participant: ProcessTemplateParticipant, eventData: { name: string } | null): Promise<string> {
   let content = templateContent;
   
   // Replace template variables with actual values
   content = content.replace(/{{name}}/g, participant.name || "");
-  content = content.replace(/{{event}}/g, eventData.name || "");
-  content = content.replace(/{{qr_link}}/g, participant.qr_token || "");
+  content = content.replace(/{{event}}/g, eventData?.name || ""); // Safely access eventData.name
+
+  // Generate QR code as SVG string using participant.qr_token
+  let qrCodeHtml = '';
+  if (participant.qr_token) {
+    try {
+      // Generate QR code as SVG string for server-side rendering
+      qrCodeHtml = await QRCode.toString(participant.qr_token, { type: 'svg' });
+    } catch (err) {
+      console.error("Error generating QR code:", err);
+      // Fallback or error handling if QR code generation fails
+      qrCodeHtml = '<div>Error generating QR Code</div>'; // Placeholder or error message
+    }
+  } else {
+     console.warn("participant.qr_token is missing for participant:", participant);
+     qrCodeHtml = '<div>QR Code not available</div>'; // Placeholder or warning message
+  }
+
+
+  // Replace {{qr_link}} with the generated QR code HTML (SVG)
+  content = content.replace(/{{qr_link}}/g, qrCodeHtml);
   
   // Add more replacements as needed
   // For example, you might want to include event details, ticket info, etc.
