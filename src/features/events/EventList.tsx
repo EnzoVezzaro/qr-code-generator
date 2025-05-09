@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, QrCode, Edit, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, QrCode, Edit, ChevronRight, AlertCircle, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
@@ -99,79 +99,92 @@ const EventList: React.FC = () => {
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {events.map((event) => (
-        <Card key={event.id} className="group hover:shadow-md transition-shadow duration-300">
-          <CardHeader className='pb-4'>
-            <CardTitle className="flex items-center justify-between">
-              <span className="truncate">{event.name}</span>
-            </CardTitle>
-            <CardDescription className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{formatDate(event.date)}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className='mb-6'>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 bg-muted/50 rounded-md text-center">
-                  <div className="text-2xl font-semibold">
-                    {event.registered_participants}
+    <div className="space-y-6 p-4"> {/* Added space-y-6 and p-4 */}
+      <div className="flex items-center justify-between flex-wrap gap-4 mb-6"> {/* Improved header styling */}
+        <h1 className="text-3xl font-bold"> {/* Increased font size */}
+          {'All Events'}
+        </h1> 
+        <Button asChild size="sm">
+          <Link to={'/events/new'}>
+            <Plus className="mr-1 h-4 w-4" />
+            Create New Event
+          </Link>
+        </Button> 
+      </div>
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {events.map((event) => (
+          <Card key={event.id} className="group hover:shadow-md transition-shadow duration-300">
+            <CardHeader className='pb-4'>
+              <CardTitle className="flex items-center justify-between">
+                <span className="truncate">{event.name}</span>
+              </CardTitle>
+              <CardDescription className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(event.date)}</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className='mb-6'>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-muted/50 rounded-md text-center">
+                    <div className="text-2xl font-semibold">
+                      {event.registered_participants}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Registered
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Registered
-                  </div>
-                </div>
-                <div className="p-2 bg-success/10 rounded-md text-center">
-                  <div className="text-2xl font-semibold text-success">
-                    {event.checked_in_participants}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Checked In
+                  <div className="p-2 bg-success/10 rounded-md text-center">
+                    <div className="text-2xl font-semibold text-success">
+                      {event.checked_in_participants}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Checked In
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>Location: {event.location}</span>
-            </div>
-            <div className="flex items-center gap-1 text-sm">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span>Max participants: {event.max_participants}</span>
-            </div>
-            <div className="flex items-center gap-1 text-sm justify-between">
               <div className="flex items-center gap-1 text-sm">
-                <QrCode className="h-4 w-4 text-muted-foreground" />
-                <span>QR usage limit: {event.qr_usage_limit}</span>
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span>Location: {event.location}</span>
               </div>
-
-              {event?.revokedAccess > 0 && (
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <span className="text-xs text-destructive">
-                    {event.revokedAccess} Revoked
-                  </span>
+              <div className="flex items-center gap-1 text-sm">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span>Max participants: {event.max_participants}</span>
+              </div>
+              <div className="flex items-center gap-1 text-sm justify-between">
+                <div className="flex items-center gap-1 text-sm">
+                  <QrCode className="h-4 w-4 text-muted-foreground" />
+                  <span>QR usage limit: {event.qr_usage_limit}</span>
                 </div>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between flex-wrap gap-2"> {/* Added flex-wrap and gap for better layout on small screens */}
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/events/${event.id}`}>
-                <span>View Details</span>
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to={`/events/${event.id}/edit`}>
-                <Edit className="mr-1 h-4 w-4" />
-                <span>Edit</span>
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
+
+                {event?.revokedAccess > 0 && (
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-xs text-destructive">
+                      {event.revokedAccess} Revoked
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between flex-wrap gap-2"> {/* Added flex-wrap and gap for better layout on small screens */}
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/events/${event.id}`}>
+                  <span>View Details</span>
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link to={`/events/${event.id}/edit`}>
+                  <Edit className="mr-1 h-4 w-4" />
+                  <span>Edit</span>
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
