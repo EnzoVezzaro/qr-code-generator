@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatDate } from '@/lib/utils';
 import { Participant, Event, CheckIn } from '@/types'; // Import CheckIn type
 import { supabase } from '@/lib/supabase'; // Import supabase
+import { saveAs } from 'file-saver';
+import ReactDOM from 'react-dom';
 
 const ParticipantList: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -214,6 +216,62 @@ const ParticipantList: React.FC = () => {
     p.email.toLowerCase().includes(search.toLowerCase()) ||
     p.identifier.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleDownloadPng = async (qrValue: string, filename: string) => {
+    const canvas = document.createElement('canvas');
+    const size = 512; // Size for download
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+  
+    if (ctx) {
+      const tempDiv = document.createElement('div');
+      ReactDOM.render(
+        <QRCodeSVG value={qrValue} size={size} level="H" includeMargin={true} />,
+        tempDiv
+      );
+      const svgElement = tempDiv.querySelector('svg');
+      if (!svgElement) {
+        console.error('Failed to generate SVG for PNG conversion.');
+        return;
+      }
+      const svgString = new XMLSerializer().serializeToString(svgElement);
+      ReactDOM.unmountComponentAtNode(tempDiv);
+      tempDiv.remove();
+  
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, size, size);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            saveAs(blob, `${filename.replace(/\s+/g, '_')}.png`);
+          }
+        }, 'image/png');
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+    }
+  };
+  
+  // Helper function to download SVG
+  const handleDownloadSvg = (qrValue: string, filename: string) => {
+    const size = 512; // Size for download
+    const tempDiv = document.createElement('div');
+    ReactDOM.render(
+      <QRCodeSVG value={qrValue} size={size} level="H" includeMargin={true} />,
+      tempDiv
+    );
+    const svgElement = tempDiv.querySelector('svg');
+    if (!svgElement) {
+      console.error('Failed to generate SVG.');
+      return;
+    }
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    ReactDOM.unmountComponentAtNode(tempDiv);
+    tempDiv.remove();
+  
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    saveAs(svgBlob, `${filename.replace(/\s+/g, '_')}.svg`);
+  };
 
   if (loading) { 
     return (
@@ -421,13 +479,19 @@ const ParticipantList: React.FC = () => {
           onClose={handleCloseViewQrModal}
           title={`QR Code for ${qrParticipant.name}`}
         >
-          <div className="p-4 flex justify-center">
-            <QRCodeSVG
-              value={qrParticipant.qr_token}
-              size={256} // Adjust size as needed
-              level="H"
-              includeMargin={true}
-            />
+          <div className="p-4 flex flex-col items-center">
+            <div className="p-2 bg-white rounded-md mb-4">
+              <QRCodeSVG
+                value={qrParticipant.qr_token}
+                size={256} // Adjust size as needed
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+            <div className="flex gap-4">
+              <Button onClick={() => handleDownloadPng(qrParticipant.qr_token, qrParticipant.name || qrParticipant.identifier)}>Download PNG</Button>
+              <Button onClick={() => handleDownloadSvg(qrParticipant.qr_token, qrParticipant.name || qrParticipant.identifier)}>Download SVG</Button>
+            </div>
           </div>
         </Modal>
       )}
