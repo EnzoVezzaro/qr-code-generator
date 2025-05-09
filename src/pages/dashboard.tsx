@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, CheckCircle, UserX, QrCode, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, UserX, QrCode, AlertCircle, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
@@ -100,6 +100,74 @@ const Dashboard: React.FC = () => {
         </Button>
       </div>
 
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{upcomingEvents.length}</div>
+            <div className="flex items-center gap-1 mt-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Upcoming events</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Participants
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold mb-2">
+              {Object.values(eventStats).reduce((sum, stat) => sum + stat.totalParticipants, 0)}
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <span className="text-xs text-muted-foreground">Across all events</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Checked In
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold mb-2">
+              {Object.values(eventStats).reduce((sum, stat) => sum + stat.checkedIn, 0)}
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <span className="text-xs text-muted-foreground">Attendees</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Revoked Access
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold mb-2">
+              {Object.values(eventStats).reduce((sum, stat) => sum + stat.revokedAccess, 0)}
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <UserX className="h-4 w-4 text-destructive" />
+              <span className="text-xs text-muted-foreground">Across all events</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {upcomingEvents.length === 0 ? (
         <Card>
           <CardHeader>
@@ -124,7 +192,11 @@ const Dashboard: React.FC = () => {
                   <CardTitle className="text-xl">{event.name}</CardTitle>
                   <CardDescription className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatDate(event.date)}</span>
+                    <span>{formatDate(event.date)}</span> 
+                  </CardDescription>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{event.location}</span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -184,74 +256,6 @@ const Dashboard: React.FC = () => {
           </div>
         </>
       )}
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{upcomingEvents.length}</div>
-            <div className="flex items-center gap-1 mt-1">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Upcoming events</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Participants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(eventStats).reduce((sum, stat) => sum + stat.totalParticipants, 0)}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              <CheckCircle className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted-foreground">Across all events</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Checked In
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(eventStats).reduce((sum, stat) => sum + stat.checkedIn, 0)}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              <CheckCircle className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted-foreground">Attendees</span>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Revoked Access
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(eventStats).reduce((sum, stat) => sum + stat.revokedAccess, 0)}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              <UserX className="h-4 w-4 text-destructive" />
-              <span className="text-xs text-muted-foreground">Across all events</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };

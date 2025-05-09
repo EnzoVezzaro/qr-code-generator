@@ -34,9 +34,7 @@ const Login: React.FC = () => {
     setError(null);
     
     try {
-      console.log('here 1: ', data)
       const result = await signIn(data.email, data.password);
-      console.log('here 2: ', data)
       if (result.success) {
         navigate('/dashboard');
       } else {

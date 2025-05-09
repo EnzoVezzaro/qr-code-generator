@@ -20,6 +20,9 @@ export interface Event {
   updated_at: string;
   created_by: string;
   participant_count: number; // Added participant count
+  registered_participants?: number; // Add registered_participants
+  checked_in_participants?: number; // Add checked_in_participants
+  revokedAccess: number; // Add revokedAccess
 }
 
 export interface Participant {

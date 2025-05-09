@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, QrCode, AlertCircle } from 'lucide-react'; // Removed UserPlus
+import { Calendar, QrCode, AlertCircle, MapPin, Users } from 'lucide-react'; // Removed UserPlus
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
@@ -29,47 +29,50 @@ const CheckInManagerPage: React.FC = () => {
           
         if (eventsError) throw eventsError;
         setUpcomingEvents(events as Event[]);
-        
+
         // Fetch stats for upcoming events
         const stats: Record<string, EventStats> = {};
-        
+
         for (const event of events) {
-          // Count total participants
-          const { count: totalParticipants, error: countError } = await supabase
+          // Count registered participants
+          const { count: registeredCount, error: participantsError } = await supabase
             .from('participants')
-            .select('*', { count: 'exact', head: true })
+            .select('id', { count: 'exact' })
             .eq('event_id', event.id);
-          
-          if (countError) throw countError;
-          
-          // Count checked-in participants (participants with check-ins)
-          const { data: checkedInData, error: checkedInError } = await supabase
+
+          if (participantsError) {
+            throw participantsError;
+          }
+
+          // Count checked-in participants
+          const { count: checkInCount, error: checkInsError } = await supabase
             .from('check_ins')
-            .select('participant_id')
+            .select('id', { count: 'exact' })
             .eq('event_id', event.id);
-          
-          if (checkedInError) throw checkedInError;
-          
-          // Count unique checked-in participants
-          const uniqueCheckedIn = new Set(checkedInData.map(ci => ci.participant_id)).size;
-          
+
+          if (checkInsError) {
+            throw checkInsError;
+          }
+
           // Count revoked participants
           const { count: revokedCount, error: revokedError } = await supabase
             .from('participants')
             .select('*', { count: 'exact', head: true })
             .eq('event_id', event.id)
             .eq('is_revoked', true);
-          
-          if (revokedError) throw revokedError;
-          
+
+          if (revokedError) {
+            throw revokedError;
+          }
+
           stats[event.id] = {
-            totalParticipants: totalParticipants || 0,
-            checkedIn: uniqueCheckedIn,
-            notCheckedIn: (totalParticipants || 0) - uniqueCheckedIn,
-            revokedAccess: revokedCount || 0,
+            totalParticipants: registeredCount ?? 0, // Use registeredCount for totalParticipants
+            checkedIn: checkInCount ?? 0,
+            notCheckedIn: (registeredCount ?? 0) - (checkInCount ?? 0),
+            revokedAccess: revokedCount ?? 0,
           };
         }
-        
+
         setEventStats(stats);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -115,42 +118,47 @@ const CheckInManagerPage: React.FC = () => {
                     <span>{formatDate(event.date)}</span>
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 bg-muted/50 rounded-md text-center">
-                        <div className="text-2xl font-semibold">
-                          {eventStats[event.id]?.totalParticipants || 0}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Participants
-                        </div>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 mb-6">
+                    <div className="p-2 bg-muted/50 rounded-md text-center">
+                      <div className="text-2xl font-semibold">
+                        {eventStats[event.id]?.totalParticipants || 0}
                       </div>
-                      <div className="p-2 bg-success/10 rounded-md text-center">
-                        <div className="text-2xl font-semibold text-success">
-                          {eventStats[event.id]?.checkedIn || 0}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Checked In
-                        </div>
+                      <div className="text-xs text-muted-foreground">
+                        Participants
                       </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
-                      <div className="flex items-center gap-2">
-                        <QrCode className="h-4 w-4 text-accent" />
-                        <span className="text-sm">QR Usage Limit: {event.qr_usage_limit}</span>
+                    <div className="p-2 bg-success/10 rounded-md text-center">
+                      <div className="text-2xl font-semibold text-success">
+                        {eventStats[event.id]?.checkedIn || 0}
                       </div>
-                      
-                      {eventStats[event.id]?.revokedAccess > 0 && (
-                        <div className="flex items-center gap-1">
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                          <span className="text-xs text-destructive">
-                            {eventStats[event.id].revokedAccess} Revoked
-                          </span>
-                        </div>
-                      )}
+                      <div className="text-xs text-muted-foreground">
+                        Checked In
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>Location: {event.location}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>Max participants: {event.max_participants}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm justify-between">
+                    <div className="flex items-center gap-1 text-sm">
+                      <QrCode className="h-4 w-4 text-muted-foreground" />
+                      <span>QR usage limit: {event.qr_usage_limit}</span>
+                    </div>
+
+                    {eventStats[event.id]?.revokedAccess > 0 && (
+                      <div className="flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4 text-destructive" />
+                        <span className="text-xs text-destructive">
+                          {eventStats[event.id].revokedAccess} Revoked
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 <div className="px-6 pb-4">

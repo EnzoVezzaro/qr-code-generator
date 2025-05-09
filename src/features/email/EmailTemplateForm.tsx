@@ -74,8 +74,6 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
       <div class="qr-container">
         {{qr_image}}
       </div>
-      <p>You can also access your QR code at any time by visiting the link below:</p>
-      <p><a href="{{qr_image}}" style="color: #3498db; text-decoration: none;">View QR Code</a></p>
     </div>
     <div class="footer">
       <p>See you there!</p>

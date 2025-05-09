@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Calendar, Users, MapPin, QrCode, AlertCircle } from 'lucide-react'; // Include MapPin and QrCode, AlertCircle
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
@@ -16,6 +16,10 @@ interface EventReport {
   max_participants: number;
   registered_participants: number;
   checked_in_participants: number;
+  location: string | null; // Add location
+  qr_usage_limit: number | null; // Add qr_usage_limit
+  participant_count: number; // Add participant_count
+  revokedAccess: number; // Add revokedAccess
 }
 
 const ReportsPage: React.FC = () => {
@@ -30,7 +34,7 @@ const ReportsPage: React.FC = () => {
       try {
         const { data: events, error: eventsError } = await supabase
           .from('events')
-          .select('id, name, date, max_participants');
+          .select('id, name, date, max_participants, location, qr_usage_limit, participants(count)'); // Fetch additional fields and participant count
 
         if (eventsError) {
           throw eventsError;
@@ -56,6 +60,17 @@ const ReportsPage: React.FC = () => {
             throw checkInsError;
           }
 
+          // Count revoked participants
+          const { count: revokedCount, error: revokedError } = await supabase
+            .from('participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', event.id)
+            .eq('is_revoked', true);
+
+          if (revokedError) {
+            throw revokedError;
+          }
+
           reports.push({
             id: event.id,
             name: event.name,
@@ -63,6 +78,10 @@ const ReportsPage: React.FC = () => {
             max_participants: event.max_participants,
             registered_participants: registeredCount ?? 0,
             checked_in_participants: checkInCount ?? 0,
+            location: event.location, // Include location
+            qr_usage_limit: event.qr_usage_limit, // Include qr_usage_limit
+            participant_count: event.participants.length > 0 ? event.participants[0].count : 0, // Include participant_count
+            revokedAccess: revokedCount ?? 0, // Include revokedAccess
           });
         }
         setEventReports(reports);
@@ -287,15 +306,17 @@ const ReportsPage: React.FC = () => {
         <div id="event-reports" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {eventReports.map((report) => (
             <Card key={report.id} className="hover:shadow-md transition-shadow duration-300">
-              <CardHeader>
-                <CardTitle className="text-xl">{report.name}</CardTitle>
+              <CardHeader className='pb-4'>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="truncate">{report.name}</span>
+                </CardTitle>
                 <CardDescription className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   <span>{formatDate(report.date)}</span>
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="space-y-2">
+                <div className='mb-6'>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-muted/50 rounded-md text-center">
                       <div className="text-2xl font-semibold">
@@ -314,20 +335,36 @@ const ReportsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-accent" />
-                      <span className="text-sm">Max Participants: {report.max_participants}</span>
-                    </div>
+                </div>
+                <div className="flex items-center gap-1 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>Location: {report.location}</span>
+                </div>
+                <div className="flex items-center gap-1 text-sm">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span>Max participants: {report.max_participants}</span>
+                </div>
+                <div className="flex items-center gap-1 text-sm justify-between">
+                  <div className="flex items-center gap-1 text-sm">
+                    <QrCode className="h-4 w-4 text-muted-foreground" />
+                    <span>QR usage limit: {report.qr_usage_limit}</span>
                   </div>
+
+                  {report?.revokedAccess > 0 && (
+                    <div className="flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                      <span className="text-xs text-destructive">
+                        {report.revokedAccess} Revoked
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
-              <div className="p-4 border-t">
+              <CardFooter>
                 <Button onClick={() => handleDownloadEventReport(report)} className="w-full">
                   Download Report
                 </Button>
-              </div>
+              </CardFooter>
             </Card>
           ))}
         </div>

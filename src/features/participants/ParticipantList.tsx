@@ -283,7 +283,7 @@ const ParticipantList: React.FC = () => {
 
   return (
     <div className="">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col justify-between">
         <div>
           <h1 className="text-2xl font-bold">Participants</h1>
           {event && eventId && (
@@ -293,7 +293,7 @@ const ParticipantList: React.FC = () => {
           )}
           {
             eventId &&
-            <div className='mt-2 mb-2'>
+            <div className='mt-2 mb-4'>
               <Button asChild variant="outline" size="sm" className='mr-2'>
                 <Link to={`/events/${eventId}/register`} target="_blank">
                   Self Registration
