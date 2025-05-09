@@ -8,6 +8,7 @@ import Layout from './components/layout/layout';
 // Pages
 import FrontendQrCheckerPage from './pages/FrontendQrCheckerPage';
 import CheckInManagerPage from './pages/CheckInManagerPage';
+import ParticipantRegistrationPage from './pages/ParticipantRegistrationPage'; // Import the new page
 
 // Pages
 import Dashboard from './pages/dashboard';
@@ -160,6 +161,9 @@ function App() {
               </ProtectedRoute>
             } />
         </Route>
+
+          {/* Participant Registration */}
+          <Route path="/events/:eventId/register" element={<ParticipantRegistrationPage />} /> {/* Moved route outside Layout */}
 
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />

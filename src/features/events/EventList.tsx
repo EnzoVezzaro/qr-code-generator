@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, QrCode, Edit, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, Users, QrCode, Edit, ChevronRight, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
@@ -92,7 +92,13 @@ const EventList: React.FC = () => {
               <span>Current participants: {event.participant_count}</span>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
+          <CardFooter className="flex justify-between flex-wrap gap-2"> {/* Added flex-wrap and gap for better layout on small screens */}
+             <Button asChild variant="outline" size="sm">
+              <Link to={`/events/${event.id}/register`} target="_blank"> {/* Link to the new registration page, opens in new tab */}
+                <span>Register Participant</span>
+                <UserPlus className="ml-1 h-4 w-4" /> {/* Added UserPlus icon */}
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link to={`/events/${event.id}`}>
                 <span>View Details</span>
