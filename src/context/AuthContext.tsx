@@ -313,16 +313,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        console.log('here here');
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('here 1: ', session);
-
+        
         if (session?.user) {
           const role = await fetchUserProfile(session.user.id);
 
           setUser({
             id: session.user.id,
             email: session.user.email || '',
+            name: (session.user.user_metadata?.name as string) || '', // Include name from user_metadata
             role: role,
           });
         }
@@ -345,6 +344,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser({
               id: session.user.id,
               email: session.user.email || '',
+              name: (session.user.user_metadata?.name as string) || '', // Include name from user_metadata
               role: role,
             });
           } catch (err: any){
@@ -374,14 +374,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data.user) {
+        console.log('getting info for user: ', data.user.user_metadata?.name);
         // Fetch user profile after successful authentication
         try {
           const role = await fetchUserProfile(data.user.id);
-          setUser({
-            id: data.user.id,
-            email: data.user.email || '',
-            role: role,
-          });
+            setUser({
+              id: data.user.id,
+              email: data.user.email || '',
+              name: (data.user.user_metadata?.name as string) || '', // Include name from user_metadata
+              role: role,
+            });
           return { success: true };
         } catch (profileError) {
           console.error('Error fetching profile after signin:', profileError);

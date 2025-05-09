@@ -1,7 +1,9 @@
 export interface User {
   id: string;
   email: string;
+  name: string;
   role: 'admin' | 'staff';
+  user_metadata?: { name?: string }; // Remove any index signature
 }
 
 export interface Event {

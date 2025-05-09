@@ -28,6 +28,7 @@ import Signup from './pages/signup';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage'; // Import SettingsPage
 import SecurityPage from './pages/SecurityPage'; // Import SecurityPage
+import AccountPage from './pages/AccountPage'; // Import AccountPage
 
 // Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode; staffAllowed?: boolean }> = ({ 
@@ -106,7 +107,7 @@ function App() {
             <Route path="events/:eventId/check-in" element={
               <ProtectedRoute staffAllowed={true}>
                 <div className="p-4">
-                  <CheckInScanner eventId=":eventId" />
+                  <CheckInScanner />
                 </div>
               </ProtectedRoute>
             } />
@@ -158,6 +159,13 @@ function App() {
             <Route path="security" element={
               <ProtectedRoute staffAllowed={true}>
                 <SecurityPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Account */}
+            <Route path="account" element={
+              <ProtectedRoute staffAllowed={true}>
+                <AccountPage />
               </ProtectedRoute>
             } />
         </Route>
