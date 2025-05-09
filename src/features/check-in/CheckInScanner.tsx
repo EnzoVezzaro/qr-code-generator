@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
 import { Event, QRValidationResult, Participant } from '@/types';
-import { deviceInfo } from '@/lib/utils';
+import { deviceInfo, formatDate } from '@/lib/utils';
 import Webcam from 'react-webcam';
 import { BrowserQRCodeReader, DecodeHintType } from '@zxing/library';
 import Modal from '@/components/ui/Modal'; // Assuming a Modal component exists
@@ -243,7 +243,8 @@ const CheckInScanner: React.FC<CheckInScannerProps> = ({ title }) => {
       {event && (
         <div className="mb-6">
           <p className="font-medium">{event.name}</p>
-          <p className="text-sm text-muted-foreground">{event.location}</p>
+          <p className="text-sm text-muted-foreground">Date: {formatDate(event.date)}</p>
+          <p className="text-sm text-muted-foreground">Location: {event.location}</p>
         </div>
       )}
 

@@ -146,61 +146,71 @@ const ParticipantRegistrationPage: React.FC = () => {
 
 
   return (
-    <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-screen">
-       <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>{event.name}</CardTitle>
-            <CardDescription>
-            <p>Welcome to the registration page for {event.name}!</p>
-            {event.date && <p>Date: {formatDate(event.date)}</p>}
-            {event.location && <p>Location: {event.location}</p>}
-            <br />
-            <p>Please fill out the form below to register as a participant. Ensure all details are accurate before submitting.</p>
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-4"></h1>
+      <div className="mx-auto max-w-md">
+        <h2 className="text-2xl font-bold mb-4">{'Self Registration'}</h2>
+
+        {event && (
+          <div className="mb-6">
+            <p className="font-medium">{event.name}</p>
+            <p className="text-sm text-muted-foreground">Date: {formatDate(event.date)}</p>
+            <p className="text-sm text-muted-foreground">Location: {event.location}</p>
+          </div>
+        )}
+        <Card className="w-full max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle>{event.name}</CardTitle>
+              <CardDescription>
+              <p>Welcome to the registration page for {event.name}!</p>
+              <br />
+              <p>Please fill out the form below to register as a participant. Ensure all details are accurate before submitting.</p>
+              </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
                 />
-            </div>
-             <div>
-              <Label htmlFor="identifier">Identifier</Label>
-              <Input
-                id="identifier"
-                type="text"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                required
-              />
-            </div>
-            {message && (
-              <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                {message.text}
               </div>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Registering...' : 'Register'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  />
+              </div>
+              <div>
+                <Label htmlFor="identifier">Identifier</Label>
+                <Input
+                  id="identifier"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
+              </div>
+              {message && (
+                <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {message.text}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Registering...' : 'Register'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

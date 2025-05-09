@@ -233,21 +233,26 @@ const ParticipantList: React.FC = () => {
               For event: {event.name} ({formatDate(event.date)})
             </p>
           )}
+          {
+            eventId &&
+            <div className='mt-2 mb-2'>
+              <Button asChild variant="outline" size="sm" className='mr-2'>
+                <Link to={`/events/${eventId}/register`} target="_blank">
+                  Self Registration
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/events/${eventId}/frontend-qr-checker`} target="_blank">
+                  Self Check-in
+                </Link>
+              </Button>
+            </div>
+          }
         </div>
         
         {
           eventId &&
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/events/${eventId}/register`} target="_blank">
-                Self Registration
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/events/${eventId}/frontend-qr-checker`} target="_blank">
-                Self Check-in
-              </Link>
-            </Button>
             <Button variant="outline" size="sm" onClick={handleOpenAddModal}>
               <Plus className="mr-1 h-4 w-4" />
               Add Participant
