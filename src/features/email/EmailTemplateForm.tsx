@@ -34,12 +34,14 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
   const [eventsLoading, setEventsLoading] = useState(true);
   const [templateLoading, setTemplateLoading] = useState(isEditing); // Set loading state for template fetching
   const [templateError, setTemplateError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false); // State to toggle between edit and preview
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset, // Get reset function from useForm
+    watch, // Get watch function from useForm
   } = useForm<TemplateFormData>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
@@ -145,6 +147,17 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
 
     fetchTemplate();
   }, [isEditing, templateId, reset]); // Refetch when isEditing or templateId changes
+
+  useEffect(() => {
+    if (showPreview) {
+      const iframe = document.getElementById('email-preview-iframe') as HTMLIFrameElement;
+      if (iframe && iframe.contentDocument) {
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(watch('content'));
+        iframe.contentDocument.close();
+      }
+    }
+  }, [watch('content'), showPreview]); // Update iframe content when content or showPreview changes
 
   const onSubmit = async (data: TemplateFormData) => {
     try {
@@ -257,20 +270,40 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Email Content (HTML)</Label>
-            <div className="border rounded-md bg-background">
-              <textarea
-                id="content"
-                rows={10}
-                className="w-full p-3 text-sm bg-transparent focus:outline-none"
-                placeholder="Enter email content"
-                {...register('content')}
-              ></textarea>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="content">Email Content (HTML)</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPreview(!showPreview)}
+              >
+                {showPreview ? 'Show Editor' : 'Show Preview'}
+              </Button>
             </div>
-            {errors.content && (
-              <p className="text-sm text-destructive">{errors.content.message}</p>
+
+            {showPreview ? (
+              <iframe
+                className="border rounded-md bg-background w-full"
+                style={{ height: '300px' }}
+                title="Email Preview"
+                id="email-preview-iframe"
+              ></iframe>
+            ) : (
+              <div>
+                <textarea
+                  id="content"
+                  rows={10}
+                  className="w-full p-3 text-sm border rounded-md bg-background focus:outline-none"
+                  placeholder="Enter email content"
+                  {...register('content')}
+                ></textarea>
+                {errors.content && (
+                  <p className="text-sm text-destructive">{errors.content.message}</p>
+                )}
+              </div>
             )}
-            
+
             <div className="p-3 bg-muted rounded-md mt-2">
               <p className="text-sm font-medium mb-1">Available variables:</p>
               <ul className="text-xs text-muted-foreground space-y-1">
