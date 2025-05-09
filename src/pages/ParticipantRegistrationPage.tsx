@@ -146,7 +146,7 @@ const ParticipantRegistrationPage: React.FC = () => {
 
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-2xl font-bold mb-4"></h1>
       <div className="mx-auto max-w-md">
         <h2 className="text-2xl font-bold mb-4">{'Self Registration'}</h2>
