@@ -38,7 +38,7 @@ Aplicación web para gestionar eventos con hasta 1000 participantes, generando c
 
 * Editor de plantillas de correo.
 * No se permite enviar correos sin una plantilla guardada.
-* Variables soportadas en plantilla: `{nombre}`, `{evento}`, `{qr_link}`.
+* Variables soportadas en plantilla: `{nombre}`, `{evento}`, `{qr_image}`.
 * Enviar correos:
 
   * A todos.

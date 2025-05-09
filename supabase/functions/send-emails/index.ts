@@ -247,7 +247,7 @@ async function processTemplate(templateContent: string, participant: ProcessTemp
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(participant.qr_token || '')}`;
   console.log('QRCode generated: ', qrCodeImageUrl);
   
-  // Replace {{qr_link}} with an image tag using the web service URL
+  // Replace {{qr_image}} with an image tag using the web service URL
   content = content.replace(/{{qr_image}}/g, `<img src="${qrCodeImageUrl}" alt="QR Code" />`);
   
   // Add more replacements as needed

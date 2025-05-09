@@ -60,6 +60,7 @@ export interface EmailTemplate {
   created_at: string;
   updated_at: string;
   created_by: string;
+  event_name?: string | null; // Added event name for display in list
 }
 
 export interface QRValidationResult {

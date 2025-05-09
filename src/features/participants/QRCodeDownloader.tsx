@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Participant } from '@/types';
 import { QRCodeSVG } from 'qrcode.react';
-import { getQRCheckInUrl } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
@@ -34,6 +33,7 @@ const QRCodeDownloader = () => {
   const [loading, setLoading] = useState(true);
   const [isViewQrModalOpen, setIsViewQrModalOpen] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [event, setEvent] = useState<Event | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +62,9 @@ const QRCodeDownloader = () => {
 
         if (eventError) throw eventError;
         setEvent(eventData as Event);
-      } catch (error: any) {
+      } catch (error: unknown) { // Use unknown for caught errors
         console.error('Error fetching data:', error);
-        setError('Failed to fetch data. Please try again.');
+        setError(`Failed to fetch data: ${error instanceof Error ? error.message : String(error)}`);
       } finally {
         setLoading(false);
       }
@@ -73,21 +73,23 @@ const QRCodeDownloader = () => {
     fetchParticipantsAndEvent();
   }, [eventId]);
 
-  const handleOpenViewQrModal = (value: string) => {
-    setQrCodeValue(value);
+  const handleOpenViewQrModal = (participant: Participant) => {
+    setSelectedParticipant(participant);
+    setQrCodeValue(participant.qr_token);
     setIsViewQrModalOpen(true);
   };
 
   const handleCloseViewQrModal = () => {
     setIsViewQrModalOpen(false);
     setQrCodeValue(null);
+    setSelectedParticipant(null);
   };
 
   // Function to create SVG and convert to PNG data URL
   const createQRCodeDataURLs = async (participant: Participant, svgSize: number): Promise<QRCodeResult | null> => {
     if (!participant.qr_token) return null;
     
-    const qrValue = getQRCheckInUrl(participant.qr_token);
+    const qrValue = participant.qr_token;
     const filename = (participant.name || participant.identifier).replace(/\s+/g, '_');
     
     // Create temporary div for SVG rendering
@@ -179,7 +181,7 @@ const QRCodeDownloader = () => {
       pdf.text(`Event: ${event.name}`, 10, yOffset);
       yOffset += 10;
       pdf.setFontSize(12);
-      pdf.text(`Date: ${event.date}`, 10, yOffset);
+      pdf.text(`Date: ${new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 10, yOffset);
       yOffset += 10;
       pdf.text(`Location: ${event.location}`, 10, yOffset);
       yOffset += 20;
@@ -254,9 +256,9 @@ const QRCodeDownloader = () => {
       // Generate and download the zip file
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, 'qr_codes.zip');
-    } catch (error: any) {
+    } catch (error: unknown) { // Use unknown for caught errors
       console.error('Error generating QR codes:', error);
-      setError('Failed to generate QR codes. Please try again.');
+      setError(`Failed to generate QR codes: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsDownloadingAll(false);
     }
@@ -313,12 +315,12 @@ const QRCodeDownloader = () => {
             </CardHeader>
             <CardContent
               className="flex justify-center p-4 pt-0 cursor-pointer"
-              onClick={() => participant.qr_token && handleOpenViewQrModal(getQRCheckInUrl(participant.qr_token))}
+              onClick={() => participant.qr_token && handleOpenViewQrModal(participant)}
             >
               {participant.qr_token ? (
                 <div className="p-2 bg-white rounded-md">
                   <QRCodeSVG
-                    value={getQRCheckInUrl(participant.qr_token)}
+                    value={participant.qr_token}
                     size={160}
                     level="H"
                     includeMargin={true}
@@ -333,24 +335,87 @@ const QRCodeDownloader = () => {
       </div>
 
       {/* View QR Modal */}
-      {qrCodeValue && (
+      {qrCodeValue && selectedParticipant && ( // Ensure selectedParticipant is available
         <Modal
           isOpen={isViewQrModalOpen}
           onClose={handleCloseViewQrModal}
-          title="QR Code"
+          title={`QR Code for ${selectedParticipant.name || selectedParticipant.identifier}`}
         >
-          <div className="p-4 flex justify-center">
-            <QRCodeSVG
-              value={qrCodeValue}
-              size={256}
-              level="H"
-              includeMargin={true}
-            />
+          <div className="p-4 flex flex-col items-center">
+            <div className="p-2 bg-white rounded-md mb-4">
+              <QRCodeSVG
+                value={qrCodeValue}
+                size={256} 
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+            <div className="flex gap-4">
+              <Button onClick={() => handleDownloadPng(qrCodeValue, selectedParticipant.name || selectedParticipant.identifier)}>Download PNG</Button>
+              <Button onClick={() => handleDownloadSvg(qrCodeValue, selectedParticipant.name || selectedParticipant.identifier)}>Download SVG</Button>
+            </div>
           </div>
         </Modal>
       )}
     </div>
   );
+};
+
+// Helper function to download PNG
+const handleDownloadPng = async (qrValue: string, filename: string) => {
+  const canvas = document.createElement('canvas');
+  const size = 512; // Size for download
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  if (ctx) {
+    const tempDiv = document.createElement('div');
+    ReactDOM.render(
+      <QRCodeSVG value={qrValue} size={size} level="H" includeMargin={true} />,
+      tempDiv
+    );
+    const svgElement = tempDiv.querySelector('svg');
+    if (!svgElement) {
+      console.error('Failed to generate SVG for PNG conversion.');
+      return;
+    }
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    ReactDOM.unmountComponentAtNode(tempDiv);
+    tempDiv.remove();
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, size, size);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveAs(blob, `${filename.replace(/\s+/g, '_')}.png`);
+        }
+      }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+  }
+};
+
+// Helper function to download SVG
+const handleDownloadSvg = (qrValue: string, filename: string) => {
+  const size = 512; // Size for download
+  const tempDiv = document.createElement('div');
+  ReactDOM.render(
+    <QRCodeSVG value={qrValue} size={size} level="H" includeMargin={true} />,
+    tempDiv
+  );
+  const svgElement = tempDiv.querySelector('svg');
+  if (!svgElement) {
+    console.error('Failed to generate SVG.');
+    return;
+  }
+  const svgString = new XMLSerializer().serializeToString(svgElement);
+  ReactDOM.unmountComponentAtNode(tempDiv);
+  tempDiv.remove();
+
+  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  saveAs(svgBlob, `${filename.replace(/\s+/g, '_')}.svg`);
 };
 
 export default QRCodeDownloader;

@@ -182,8 +182,7 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
         if (error) throw error;
       }
 
-      // Navigate to event emails page if eventId exists, otherwise navigate to email templates list
-      navigate(data.eventId ? `/events/${data.eventId}/emails` : '/email-templates'); // Navigate to list after saving
+      navigate('/email-templates');
     } catch (error) {
       console.error('Error saving template:', error);
       // TODO: Add proper error handling/notification
@@ -260,7 +259,7 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Email Content</Label>
+            <Label htmlFor="content">Email Content (HTML)</Label>
             <div className="border rounded-md bg-background">
               <textarea
                 id="content"
@@ -279,7 +278,7 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{name}}'}</code> - Participant's name</li>
                 <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{event}}'}</code> - Event name</li>
-                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{qr_link}}'}</code> - Link to participant's QR code</li>
+                <li><code className="bg-muted-foreground/20 px-1 rounded">{'{{qr_image}}'}</code> - Link to participant's QR code</li>
               </ul>
             </div>
           </div>

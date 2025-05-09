@@ -22,10 +22,6 @@ export function getBaseUrl(): string {
   return window.location.origin;
 }
 
-export function getQRCheckInUrl(token: string): string {
-  return `${getBaseUrl()}/check-in/${token}`;
-}
-
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength)}...`;

@@ -215,8 +215,12 @@ const ParticipantList: React.FC = () => {
     p.identifier.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) {
-    return <div className="text-center p-8">Loading participants...</div>;
+  if (loading) { 
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-pulse text-muted-foreground">Loading participants...</div>
+      </div>
+    )
   }
 
   return (
