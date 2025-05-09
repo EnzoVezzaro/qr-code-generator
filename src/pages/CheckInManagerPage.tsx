@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, QrCode, AlertCircle } from 'lucide-react';
+import { Calendar, QrCode, AlertCircle } from 'lucide-react'; // Removed UserPlus
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
@@ -154,7 +154,7 @@ const CheckInManagerPage: React.FC = () => {
                   </div>
                 </CardContent>
                 <div className="px-6 pb-4">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2"> {/* Reverted grid to 2 columns */}
                     <Button asChild variant="outline" size="sm">
                       <Link to={`/events/${event.id}`}>
                         View Details

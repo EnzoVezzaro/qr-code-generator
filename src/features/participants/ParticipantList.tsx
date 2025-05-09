@@ -239,6 +239,11 @@ const ParticipantList: React.FC = () => {
           eventId &&
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline" size="sm">
+              <Link to={`/events/${eventId}/register`} target="_blank">
+                Self Registration
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
               <Link to={`/events/${eventId}/frontend-qr-checker`} target="_blank">
                 Self Check-in
               </Link>

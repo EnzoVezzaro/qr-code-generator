@@ -1,19 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft } from 'lucide-react';
+import { Event } from '@/types'; // Import Event type
+import { formatDate } from '@/lib/utils'; // Import formatDate
 
 const ParticipantRegistrationPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!eventId) {
+        setEventLoading(false);
+        return;
+      }
+      setEventLoading(true);
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching event:', error);
+        setEvent(null);
+      } else {
+        setEvent(data);
+      }
+      setEventLoading(false);
+    };
+
+    fetchEvent();
+  }, [eventId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,13 +118,45 @@ const ParticipantRegistrationPage: React.FC = () => {
     );
   }
 
+  if (eventLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Loading event details...</div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-screen">
+        <Card className="w-full max-w-sm text-center">
+          <CardHeader>
+            <CardTitle>Event Not Found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>The specified event could not be found.</p>
+             <Button asChild>
+              <Link to="/events">Back to Events</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-screen">
        <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Register Participant</CardTitle>
-          <CardDescription>Register a new participant for this event.</CardDescription>
+          <CardTitle>{event.name}</CardTitle>
+            <CardDescription>
+            <p>Welcome to the registration page for {event.name}!</p>
+            {event.date && <p>Date: {formatDate(event.date)}</p>}
+            {event.location && <p>Location: {event.location}</p>}
+            <br />
+            <p>Please fill out the form below to register as a participant. Ensure all details are accurate before submitting.</p>
+            </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
