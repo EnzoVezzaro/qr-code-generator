@@ -191,7 +191,7 @@ const ParticipantList: React.FC = () => {
           p.email,
           p.identifier,
           p.qr_usage_count,
-          p.is_revoked ? 'Revoked' : 'Active'
+          p.isCheckedIn ? 'Checked In' : (p.is_revoked ? 'Revoked' : 'Registered'),
         ].join(',')
       )
     ].join('\n');

@@ -45,18 +45,45 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
     defaultValues: {
       name: '',
       subject: '',
-      content: `Dear {{name}},
-
-We're excited to have you join us for {{event}}!
-
-Your personal QR code is attached to this email. Please bring it with you to the event for quick check-in.
-
-You can also access your QR code at any time by visiting: {{qr_link}}
-
-See you there!
-
-Best regards,
-The Event Team`,
+      content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Invitation</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    .header { text-align: center; padding-bottom: 20px; }
+    .header h1 { color: #2c3e50; font-size: 24px; margin: 0; }
+    .content { font-size: 16px; line-height: 1.6; color: #333333; }
+    .qr-container { text-align: center; margin-top: 20px; }
+    .qr-container img { max-width: 200px; }
+    .footer { text-align: center; margin-top: 30px; font-size: 14px; color: #777777; }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <h1>Welcome to {{event}}!</h1>
+    </div>
+    <div class="content">
+      <p>Dear {{name}},</p>
+      <p>We're excited to have you join us for {{event}}!</p>
+      <p>Your personal QR code is attached to this email. Please bring it with you to the event for quick check-in.</p>
+      <div class="qr-container">
+        {{qr_image}}
+      </div>
+      <p>You can also access your QR code at any time by visiting the link below:</p>
+      <p><a href="{{qr_image}}" style="color: #3498db; text-decoration: none;">View QR Code</a></p>
+    </div>
+    <div class="footer">
+      <p>See you there!</p>
+      <p>Best regards,<br>The Event Team</p>
+    </div>
+  </div>
+</body>
+</html>`,
       eventId: routeEventId || '', // Set default eventId from route if exists
     },
   });

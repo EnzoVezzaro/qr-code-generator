@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend"; // Import Resend
-import QRCode from 'https://esm.sh/qrcode'; // Import qrcode library
 
 console.log("Hello from send-emails function!");
 
@@ -125,6 +124,9 @@ serve(async (req) => {
       .select("*")
       .eq("id", eventId);
 
+    console.log('Event Information: ', eventData);
+    
+
     // Fetch participant details
     const { data: participants, error: participantsError } = await supabaseClient
       .from("participants")
@@ -149,7 +151,7 @@ serve(async (req) => {
       let resendId = null;
 
       try {
-        const emailContent = await processTemplate(template.body, participant, eventData); // Added await here
+        const emailContent = await processTemplate(template.body, participant, eventData[0]); // Added await here
 
         const { data, error: resendError } = await resend.emails.send({
           from: 'onboarding@resend.dev', // Replace with your verified sender email
@@ -185,7 +187,7 @@ serve(async (req) => {
           recipient_email: participant.email,
           recipient_name: participant.name,
           subject: template.subject,
-          content: await processTemplate(template.body, participant, eventData), // Store processed content, await the promise
+          content: await processTemplate(template.body, participant, eventData[0]),
           sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
           error_message: errorMessage,
           resend_id: resendId, // Store Resend ID
@@ -240,25 +242,13 @@ async function processTemplate(templateContent: string, participant: ProcessTemp
   content = content.replace(/{{name}}/g, participant.name || "");
   content = content.replace(/{{event}}/g, eventData?.name || ""); // Safely access eventData.name
 
-  // Generate QR code as SVG string using participant.qr_token
-  let qrCodeHtml = '';
-  if (participant.qr_token) {
-    try {
-      // Generate QR code as SVG string for server-side rendering
-      qrCodeHtml = await QRCode.toString(participant.qr_token, { type: 'svg' });
-    } catch (err) {
-      console.error("Error generating QR code:", err);
-      // Fallback or error handling if QR code generation fails
-      qrCodeHtml = '<div>Error generating QR Code</div>'; // Placeholder or error message
-    }
-  } else {
-     console.warn("participant.qr_token is missing for participant:", participant);
-     qrCodeHtml = '<div>QR Code not available</div>'; // Placeholder or warning message
-  }
-
-
-  // Replace {{qr_link}} with the generated QR code HTML (SVG)
-  content = content.replace(/{{qr_link}}/g, qrCodeHtml);
+  // Generate QR code image URL using a public web service
+  // Replace with a suitable QR code API endpoint
+  const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(participant.qr_token || '')}`;
+  console.log('QRCode generated: ', qrCodeImageUrl);
+  
+  // Replace {{qr_link}} with an image tag using the web service URL
+  content = content.replace(/{{qr_image}}/g, `<img src="${qrCodeImageUrl}" alt="QR Code" />`);
   
   // Add more replacements as needed
   // For example, you might want to include event details, ticket info, etc.
