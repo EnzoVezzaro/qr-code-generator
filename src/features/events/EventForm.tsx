@@ -139,6 +139,7 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
             qr_usage_limit: data.qr_usage_limit,
             check_in_message: data.check_in_message || null,
             check_in_color: data.check_in_color || null,
+            created_by: user.id, // Add created_by field
           })
           .select()
           .single();

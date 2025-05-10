@@ -6,21 +6,32 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
 import { Event, EventStats } from '@/types';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 
 const Dashboard: React.FC = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventStats, setEventStats] = useState<Record<string, EventStats>>({});
+  const { user } = useAuth(); // Get the current user
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        if (!user) {
+          // If user is not logged in, don't fetch data
+          setUpcomingEvents([]);
+          setEventStats({});
+          setLoading(false);
+          return;
+        }
+
         // Fetch upcoming events (events with dates >= today)
         const today = new Date().toISOString();
         console.log('get events ....');
         const { data: events, error: eventsError } = await supabase
           .from('events')
           .select('*')
+          .eq('created_by', user.id) // Filter by created_by
           .gte('date', today)
           .order('date')
           .limit(5);

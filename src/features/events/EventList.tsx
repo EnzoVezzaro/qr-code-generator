@@ -6,18 +6,28 @@ import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { Event } from '@/types';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 
 const EventList: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth(); // Get the current user
 
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
+        if (!user) {
+          // If user is not logged in, don't fetch events
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
+
         const { data: eventsData, error: eventsError } = await supabase
           .from('events')
           .select('*') // Select all event fields
+          .eq('created_by', user.id) // Filter by created_by
           .order('date', { ascending: true });
 
         if (eventsError) {

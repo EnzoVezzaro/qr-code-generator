@@ -5,28 +5,59 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { EmailTemplate } from '@/types';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 
 const EmailTemplateList: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>(); // Get eventId from URL
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth(); // Get the current user
 
   useEffect(() => {
     const fetchTemplates = async () => {
       setLoading(true);
       try {
+        if (!user) {
+          // If user is not logged in, don't fetch templates
+          setTemplates([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch the IDs of events created by the current user
+        const { data: userEvents, error: userEventsError } = await supabase
+          .from('events')
+          .select('id')
+          .eq('created_by', user.id);
+
+        if (userEventsError) {
+          console.error('Error fetching user events:', userEventsError);
+          setTemplates([]);
+          setLoading(false);
+          return;
+        }
+
+        const userEventIds = userEvents.map(event => event.id);
+
+        // If a specific eventId is provided, check if it's one of the user's events
+        if (eventId && !userEventIds.includes(eventId)) {
+          console.warn(`Attempted to fetch templates for event ${eventId} not created by user ${user.id}`);
+          setTemplates([]); // Return empty array if event is not user's
+          setLoading(false);
+          return;
+        }
+
         let query = supabase
           .from('email_templates')
           .select('*, events(name)') // Select template fields and related event name
           .order('created_at', { ascending: false });
 
-        // Filter by event_id if eventId is present in the URL
         if (eventId) {
+          // If eventId is provided and is user's event, filter by that eventId
           query = query.eq('event_id', eventId);
         } else {
-          // Optionally, filter for global templates if no eventId is present
-          // query = query.is('event_id', null);
-          // For now, we'll show all templates if no eventId is in the URL
+          // If no eventId is provided, filter by templates associated with user's events
+          query = query.in('event_id', userEventIds);
         }
 
         const { data, error } = await query;
@@ -83,8 +114,8 @@ const EmailTemplateList: React.FC = () => {
         </h1> 
         <Button asChild size="sm">
           <Link to={createTemplateLink}>
-            <Plus className="mr-1 h-4 w-4" />
-            Create New Template
+              <Plus className="mr-1 h-4 w-4" />
+              Create New Template
           </Link>
         </Button>
       </div>
@@ -102,7 +133,9 @@ const EmailTemplateList: React.FC = () => {
           <h3 className="text-xl font-semibold mb-2">No email templates found</h3> {/* Increased font size */}
           <p className="text-muted-foreground mb-4">Create your first email template to get started</p> {/* Styled description */}
           <Button asChild>
-            <Link to={createTemplateLink}>Create Template</Link> {/* Simplified button text */}
+            <Link to={createTemplateLink}>
+              <span>Create Template</span> {/* Wrap text in a span */}
+            </Link>
           </Button>
         </div>
       ) : (
@@ -131,13 +164,13 @@ const EmailTemplateList: React.FC = () => {
               <CardFooter className="flex justify-end gap-2"> {/* Moved buttons to CardFooter */}
                 <Button variant="outline" size="sm" asChild>
                   <Link to={`/email-templates/${template.id}/edit`}>
-                    <Edit className="h-4 w-4 mr-1" /> {/* Added mr-1 for spacing */}
-                    <span>Edit</span> {/* Explicit span for text */}
+                      <Edit className="h-4 w-4 mr-1" /> {/* Added mr-1 for spacing */}
+                      Edit
                   </Link>
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDeleteTemplate(template.id)}>
-                  <Trash2 className="h-4 w-4 mr-1" /> {/* Added mr-1 for spacing */}
-                  <span>Delete</span> {/* Explicit span for text */}
+                    <Trash2 className="h-4 w-4 mr-1" /> {/* Added mr-1 for spacing */}
+                    Delete
                 </Button>
               </CardFooter>
             </Card>

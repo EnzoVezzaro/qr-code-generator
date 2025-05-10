@@ -159,26 +159,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // New function to fetch participants using XHR
   const fetchParticipants = (eventId?: string): Promise<{ data: Participant[] | null; error: string | null }> => {
-    return new Promise(resolve => {
+    return new Promise(async (resolve) => { // Added async here
       const xhr = new XMLHttpRequest();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Missing Supabase environment variables');
-        resolve({ data: null, error: 'Missing Supabase configuration' });
+      // Get the current session to include the Authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      const userId = session?.user?.id;
+
+      if (!supabaseUrl || !supabaseAnonKey || !accessToken || !userId) {
+        console.error('Missing Supabase configuration, access token, or user ID for fetching participants');
+        resolve({ data: null, error: 'Authentication required for this operation' });
+        return;
+      }
+
+      // First, fetch the IDs of events created by the current user
+      const { data: userEvents, error: userEventsError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('created_by', userId);
+
+      if (userEventsError) {
+        console.error('Error fetching user events:', userEventsError);
+        resolve({ data: null, error: 'Failed to fetch user events' });
+        return;
+      }
+
+      const userEventIds = userEvents.map(event => event.id);
+
+      // If a specific eventId is provided, check if it's one of the user's events
+      if (eventId && !userEventIds.includes(eventId)) {
+        console.warn(`Attempted to fetch participants for event ${eventId} not created by user ${userId}`);
+        resolve({ data: [], error: null }); // Return empty array if event is not user's
         return;
       }
 
       let url;
       if (eventId){
+        // If eventId is provided and is user's event, fetch participants for that event
         url = `${supabaseUrl}/rest/v1/participants?event_id=eq.${eventId}&select=*&order=name.asc`;
       } else {
-        url = `${supabaseUrl}/rest/v1/participants?select=*&order=name.asc`;
+        // If no eventId is provided, fetch participants for all user's events
+        // Using 'in' filter for multiple event IDs
+        url = `${supabaseUrl}/rest/v1/participants?event_id=in.(${userEventIds.join(',')})&select=*&order=name.asc`;
       }
 
       xhr.open('GET', url);
       xhr.setRequestHeader('apikey', supabaseAnonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`); // Include Authorization header
       xhr.setRequestHeader('Prefer', 'return=representation');
       xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -201,7 +231,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         } else {
           console.error('fetchParticipants request failed:', xhr.responseText);
-          resolve({ data: null, error: `Failed to fetch participants: ${xhr.status} ${xhr.statusText}` });
+          let errorMessage = `Failed to fetch participants: ${xhr.status} ${xhr.statusText}`;
+           try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            if (errorResponse.message) {
+              errorMessage = errorResponse.message;
+            }
+          } catch (parseError) {
+             console.error('Error parsing participants error response:', parseError);
+          }
+          resolve({ data: null, error: errorMessage });
         }
       };
 
@@ -215,6 +254,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resolve({ data: null, error: 'Request timed out' });
       };
 
+      xhr.timeout = 15000; // Set timeout
+
+      console.log('Sending fetchParticipants XHR request');
       xhr.send();
     });
   };
@@ -423,13 +465,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data.user && data.user.id) {
-        // User created successfully, now create profile
         try {
+          // User created successfully, now create profile
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: data.user.id,
-              role: 'staff', // Default new users to 'staff' role
+              role: 'admin', // Default new users to 'admin' role
             });
 
           if (profileError) {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Calendar, Users, MapPin, QrCode, AlertCircle } from 'lucide-react'; // Include MapPin and QrCode, AlertCircle
 import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { QRCodeSVG } from 'qrcode.react';
@@ -26,15 +27,24 @@ const ReportsPage: React.FC = () => {
   const [eventReports, setEventReports] = useState<EventReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth(); // Get the current user
 
   useEffect(() => {
     const fetchReports = async () => {
       setLoading(true);
       setError(null);
       try {
+        if (!user) {
+          // If user is not logged in, don't fetch reports
+          setEventReports([]);
+          setLoading(false);
+          return;
+        }
+
         const { data: events, error: eventsError } = await supabase
           .from('events')
-          .select('id, name, date, max_participants, location, qr_usage_limit, participants(count)'); // Fetch additional fields and participant count
+          .select('id, name, date, max_participants, location, qr_usage_limit, participants(count)') // Fetch additional fields and participant count
+          .eq('created_by', user.id); // Filter by created_by
 
         if (eventsError) {
           throw eventsError;
