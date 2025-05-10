@@ -92,9 +92,17 @@ const EmailTemplateForm: React.FC<EmailTemplateFormProps> = ({ isEditing = false
     const fetchEvents = async () => {
       setEventsLoading(true);
       try {
+        if (!user) {
+          // If user is not logged in, don't fetch events
+          setEvents([]);
+          setEventsLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('events')
           .select('id, name')
+          .eq('created_by', user.id) // Filter by created_by
           .order('date', { ascending: false });
 
         if (error) throw error;

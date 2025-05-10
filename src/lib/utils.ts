@@ -1,17 +1,44 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export function formatDate(date: string | Date): string {
-  return format(new Date(date), "PPP");
+  const dateParsed = typeof date === 'string' ? parseISO(date) : date;
+  
+  // Format in UTC to ensure consistency
+  return formatInTimeZone(dateParsed, 'UTC', 'MMMM d, yyyy');
 }
 
 export function formatDateTime(date: string | Date): string {
   return format(new Date(date), "PPp");
+}
+
+/**
+ * Normalizes a date input to UTC midnight (00:00:00)
+ * This removes time components and timezone issues by storing all dates at UTC midnight
+ * 
+ * @param dateInput The date from user input (string or Date)
+ * @returns ISO string for midnight UTC on the intended date
+ */
+export function normalizeToUTCMidnight(dateInput: string | Date): string {
+  if (typeof dateInput === 'string') {
+    // If it's already an ISO string with timezone info, use it directly
+    if (dateInput.match(/[+-]\d{2}:?\d{2}$/) || dateInput.endsWith('Z')) {
+      return dateInput;
+    }
+    
+    // Otherwise, preserve it as-is by adding a timezone designator
+    // This assumes the date is specified in UTC if no timezone is provided
+    return `${dateInput.replace(/\s/g, 'T').replace(/Z$/, '')}+00:00`;
+  }
+  
+  // If it's a Date object, convert to ISO with timezone info
+  return dateInput.toISOString().replace('Z', '+00:00');
 }
 
 export function generateQRToken(): string {

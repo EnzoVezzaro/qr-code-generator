@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Event } from '@/types';
+import { normalizeToUTCMidnight } from '@/lib/utils';
 
 const eventSchema = z.object({
   name: z.string().min(3, 'Event name must be at least 3 characters'),
@@ -115,7 +116,7 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
           .from('events')
           .update({
             name: data.name,
-            date: new Date(data.date).toISOString(),
+            date: normalizeToUTCMidnight(data.date),
             location: data.location,
             max_participants: data.max_participants,
             qr_usage_limit: data.qr_usage_limit,
@@ -133,7 +134,7 @@ const EventForm: React.FC<EventFormProps> = ({ isEditing = false }) => {
           .from('events')
           .insert({
             name: data.name,
-            date: new Date(data.date).toISOString(),
+            date: normalizeToUTCMidnight(data.date),
             location: data.location,
             max_participants: data.max_participants,
             qr_usage_limit: data.qr_usage_limit,
